@@ -6,6 +6,12 @@ Introduction
 
 This public repository provides analysis code for the ZELDA wavefront sensor.
 
+Authors
+-------
+
+- Arthur Vigan, `arthur.vigan@lam.fr <mailto:arthur.vigan@lam.fr>`_
+- Mamadou N'Diaye, `mamadou.ndiaye@oca.eu <mailto:mamadou.ndiaye@oca.eu>`_
+
 References
 ----------
 

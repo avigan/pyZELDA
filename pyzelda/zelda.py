@@ -39,6 +39,7 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
     
     dim : int, optional
         Size of the final array. Default is 500
+    
     center : tuple, optional
         Specify the center of the pupil in raw data coordinations.
         Default is '()', i.e. the center will be determined by the routine
