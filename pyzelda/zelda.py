@@ -7,16 +7,15 @@ arthur.vigan@lam.fr
 '''
 
 import numpy as np
-import scipy.ndimage as ia
+
 import utils.mft as mft
 import utils.image as imutils
+import utils.aperture as aperture
+
 import poppy.zernike as zernike
+import scipy.ndimage as ndimage
 
 from astropy.io import fits
-from scipy.ndimage.measurements import center_of_mass
-from utils.image import least_square_circle
-from utils.shift import shift
-from utils import aperture
 
 
 def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, center=(), center_method='fit'):
@@ -79,10 +78,10 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
     
     # subtract background and correct for bad pixels
     clear_pupil = clear_pupil - dark
-    clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
+    clear_pupil = imutils.sigma_clip(clear_pupil, box=5, nsigma=3, iterate=True)
     
     zelda_pupil = zelda_pupil - dark
-    zelda_pupil = imutils.sigma_filter(zelda_pupil, box=5, nsigma=3, iterate=True)
+    zelda_pupil = imutils.sigma_clip(zelda_pupil, box=5, nsigma=3, iterate=True)
 
     # center
     if (len(center) == 0):
@@ -93,10 +92,10 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
         if (center_method == 'fit'):
             # circle fit
             kernel = np.ones((10, 10), dtype=int)
-            tmp = ia.binary_fill_holes(tmp, structure=kernel)
+            tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
             
             kernel = np.ones((3, 3), dtype=int)
-            tmp_flt = ia.binary_erosion(tmp, structure=kernel)
+            tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
             
             diff = tmp-tmp_flt
             cc = np.where(diff != 0)
@@ -106,7 +105,7 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
             c = np.roll(c, 1)
         elif (center_method == 'com'):
             # center of mass (often fails)
-            c = np.array(center_of_mass(tmp))
+            c = np.array(ndimage.center_of_mass(tmp))
             c = np.roll(c, 1)
         else:
             raise NameError('Unkown centring method '+center_method)
@@ -214,10 +213,10 @@ def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, 
         if (center_method == 'fit'):
             # circle fit
             kernel = np.ones((10, 10), dtype=int)
-            tmp = ia.binary_fill_holes(tmp, structure=kernel)
+            tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
             
             kernel = np.ones((3, 3), dtype=int)
-            tmp_flt = ia.binary_erosion(tmp, structure=kernel)
+            tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
             
             diff = tmp-tmp_flt
             cc = np.where(diff != 0)
@@ -227,7 +226,7 @@ def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, 
             c = np.roll(c, 1)
         elif (center_method == 'com'):
             # center of mass (often fails)
-            c = np.array(center_of_mass(tmp))
+            c = np.array(ndimage.center_of_mass(tmp))
             c = np.roll(c, 1)
         else:
             raise NameError('Unkown centring method '+center_method)
