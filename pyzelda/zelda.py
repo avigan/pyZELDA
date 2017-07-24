@@ -9,7 +9,7 @@ arthur.vigan@lam.fr
 import numpy as np
 
 import utils.mft as mft
-import utils.image as imutils
+import utils.imutils as imutils
 import utils.aperture as aperture
 
 import poppy.zernike as zernike
@@ -608,5 +608,4 @@ def opd_expand(opd, nterms=32):
         reconstructed_opd += coeffs[z] * basis[z, :, :]
 
     return basis, coeffs, reconstructed_opd
-
 
