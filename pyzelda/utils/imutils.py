@@ -734,10 +734,12 @@ def scale(array, scale_value, center=None, new_dim=None, method='fft', mode='con
 ####################################################################################
 
 
-def sigma_clip(img, box=5, nsigma=3, iterate=False, return_mask=False, max_iter=20, _iters=0):
+def sigma_filter(img, box=5, nsigma=3, iterate=False, return_mask=False, max_iter=20, _iters=0):
     '''
     Performs sigma-clipping over an image
 
+    Adapted from the IDL function with the same name in the astron library.
+    
     Parameters
     ----------
     img : array
@@ -767,7 +769,7 @@ def sigma_clip(img, box=5, nsigma=3, iterate=False, return_mask=False, max_iter=
         Input image with clipped values
     
     '''
-    
+
     box2 = box**2
     
     kernel = Box2DKernel(box)
@@ -781,25 +783,126 @@ def sigma_clip(img, box=5, nsigma=3, iterate=False, return_mask=False, max_iter=
     nok = wok[0].size
     
     npix = img.size
-    
+
+    # no bad pixels
     if (nok == npix):
-        return img
-       
+        if return_mask:
+            return img, np.zeros_like(img, dtype=np.bool)
+        else:
+            return img
+
+    # copy good pixels in clipped image
     if (nok > 0):
         img_clip[wok] = img[wok]
-    
+
+    # change mask
+    mask = (img != img_clip)
+
+    # iterations
     if (iterate is True):
         _iters = _iters+1
         if (_iters >= max_iter):
-            return img_clip
-        return sigma_clip(img_clip, box=box, nsigma=nsigma, iterate=True, _iters=_iters)
-
-    # return clipped image + mask
-    if return_mask:
-        mask = img != img_clip
-        return img_clip, mask
+            if return_mask:
+                return img_clip, mask
+            else:
+                return img_clip
+        
+        return sigma_filter(img_clip, box=box, nsigma=nsigma, iterate=True, _iters=_iters, return_mask=return_mask)
     
-    return img_clip
+    if return_mask:
+        return img_clip, mask
+    else:
+        return img_clip
+
+    
+def fixpix(img, bpm, neighbor_box=3, min_neighbors=3):
+    '''
+    Clean an image according to the provided bad pixel map
+
+    Copied and adapted from the the Vortex Image Processing package,
+    https://github.com/vortex-exoplanet/VIP, in which the function is
+    called sigma_filter, although it's not technically a sigma filter
+    since it just takes a bad pixel map.
+    
+    Parameters
+    ----------
+    img : array_like 
+        Input 2d array, image.
+    
+    bpm: array_like
+        Input array of the same size as img, indicating the locations of 
+        bad/nan pixels by 1 (the rest of the array is set to 0)
+    
+    neighbor_box : int, optional
+        The side of the square window around each pixel where the sigma and 
+        median are calculated.
+    
+    min_neighbors : int, optional
+        Minimum number of good neighboring pixels to be able to correct the 
+        bad/nan pixels
+        
+    Returns
+    -------
+    img_corr : array_like
+        Output array with corrected bad/nan pixels
+
+    '''
+    
+    if not img.ndim == 2:
+        raise ValueError('Input array must be an 2D image')
+
+    sz_y = img.shape[0]    # get image y-dim
+    sz_x = img.shape[1]    # get image x-dim
+    bp = bpm.copy()        # temporary bpix map; important to make a copy!
+    im = img.copy()        # corrected image
+    nb = int(np.sum(bpm))  # number of bad pixels remaining    
+    nit = 0                # number of iterations
+    
+    # iteratively corrects only the bad pixels with sufficient good neighbours
+    while nb > 0:
+        nit += 1
+        wb = np.where(bp)                   # find bad pixels
+        gp = 1 - bp                         # temporary good pixel map
+        
+        for n in range(nb):
+            # Determine the box around each pixel
+            half_box = np.floor(neighbor_box/2.)
+
+            # half size of the box at the bottom of the pixel
+            hbox_b = min(half_box, wb[0][n])         
+
+            # half size of the box at the top of the pixel
+            hbox_t = min(half_box, sz_y-1-wb[0][n])  
+
+            # half size of the box to the left of the pixel
+            hbox_l = min(half_box, wb[1][n])         
+
+            # half size of the box to the right of the pixel
+            hbox_r = min(half_box, sz_x-1-wb[1][n])
+            
+            # in case we are at an edge, we want to extend the box by one 
+            # row/column of pixels in the direction opposite to the edge to 
+            # have 9 px instead of 6: 
+            if half_box == 1:
+                if wb[0][n] == sz_y-1:
+                    hbox_b = hbox_b+1 
+                elif wb[0][n] == 0:
+                    hbox_t = hbox_t+1
+                if wb[1][n] == sz_x-1:
+                    hbox_l = hbox_l+1 
+                elif wb[1][n] == 0:
+                    hbox_r = hbox_r+1
+
+            sgp = gp[int(wb[0][n]-hbox_b):int(wb[0][n]+hbox_t+1),
+                     int(wb[1][n]-hbox_l):int(wb[1][n]+hbox_r+1)]
+            if int(np.sum(sgp)) >= min_neighbors:
+                sim = im[int(wb[0][n]-hbox_b):int(wb[0][n]+hbox_t+1),
+                         int(wb[1][n]-hbox_l):int(wb[1][n]+hbox_r+1)]
+                im[wb[0][n], wb[1][n]] = np.median(sim[np.where(sgp)])
+                bp[wb[0][n], wb[1][n]] = 0
+        nb = int(np.sum(bp))
+        
+    return im
 
 
 ####################################################################################
@@ -948,7 +1051,6 @@ def profile(img, type='mean', step=1, mask=None, center=None, rmax=0, clip=True,
                 raise ValueError('Unknown statistics ptype = {0}. Allowed values are mean, std, var, median, min and max'.format(type))
 
     return prof, rad
-
 
 
 if __name__ == "__main__":
