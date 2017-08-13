@@ -78,10 +78,10 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
     
     # subtract background and correct for bad pixels
     clear_pupil = clear_pupil - dark
-    clear_pupil = imutils.sigma_clip(clear_pupil, box=5, nsigma=3, iterate=True)
+    clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
     
     zelda_pupil = zelda_pupil - dark
-    zelda_pupil = imutils.sigma_clip(zelda_pupil, box=5, nsigma=3, iterate=True)
+    zelda_pupil = imutils.sigma_filter(zelda_pupil, box=5, nsigma=3, iterate=True)
 
     # center
     if (len(center) == 0):
@@ -119,10 +119,10 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
         
     cc = dim//2
     
-    clear_pupil = shift(clear_pupil, cc-c)
+    clear_pupil = imutils.shift(clear_pupil, cc-c)
     clear_pupil = clear_pupil[:dim, :dim]
     
-    zelda_pupil = shift(zelda_pupil, cc-c)
+    zelda_pupil = imutils.shift(zelda_pupil, cc-c)
     zelda_pupil = zelda_pupil[:dim, :dim]
 
     return clear_pupil, zelda_pupil, c
@@ -241,7 +241,7 @@ def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, 
     cint = c.astype(np.int)
     cc = dim//2
     
-    clear_pupil = shift(clear_pupil, cc-c)
+    clear_pupil = imutils.shift(clear_pupil, cc-c)
     clear_pupil = clear_pupil[:dim, :dim]
     
     # read zelda pupil data (all frames)
@@ -269,7 +269,7 @@ def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, 
             
             img[cint[1]-dim//2-20:cint[1]+dim//2+20, cint[0]-dim//2-20:cint[0]+dim//2+20] = nimg
 
-            zelda_pupil[idx] = shift(img, cc-c)
+            zelda_pupil[idx] = imutils.shift(img, cc-c)
 
         zelda_pupil = zelda_pupil[:, :dim, :dim]
 
