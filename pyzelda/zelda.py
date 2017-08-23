@@ -19,7 +19,7 @@ import scipy.ndimage as ndimage
 from astropy.io import fits
 
 
-def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit'):
+def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit'):
     '''
     Read a sequence of ZELDA files from disk and prepare them for analysis
     
