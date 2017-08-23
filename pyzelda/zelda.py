@@ -6,6 +6,7 @@ pyZELDA main module
 arthur.vigan@lam.fr
 '''
 
+import os
 import numpy as np
 
 import pyzelda.utils.mft as mft
@@ -139,34 +140,50 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     if type(zelda_pupil_files) is not list:
         zelda_pupil_files = [zelda_pupil_files]
 
-    zelda_pupils = []
+    # determine total number of frames
+    nframes_total = 0
+    for fname in zelda_pupil_files:
+        img = fits.getdata(os.path.join(path, fname+'.fits'))
+        if img.ndim == 2:
+            nframes_total += 1
+        elif img.ndim == 3:
+            nframes_total += img.shape[0]
+
+    zelda_pupils = np.empty((nframes_total, dim, dim))
+    cube_idx = 0
     for fname in zelda_pupil_files:
         print(fname)
-        
+
+        # read data
         zelda_pupil = fits.getdata(path+fname+'.fits')
         if zelda_pupil.ndim == 3:
             zelda_pupil = zelda_pupil[:, :, 1024:]
         else:
             zelda_pupil = zelda_pupil[np.newaxis, :, 1024:]        
-
+        
         nframes = len(zelda_pupil)
         for idx in range(nframes):
             print(' * frame {0} / {1}'.format(idx+1, nframes))
             img = zelda_pupil[idx]
             img = img - dark
 
+            # clean zelda image (extract only pupil to be faster)
             nimg = img[cint[1]-dim//2-20:cint[1]+dim//2+20, cint[0]-dim//2-20:cint[0]+dim//2+20]
             nimg = imutils.sigma_filter(nimg, box=5, nsigma=3, iterate=True)
             
             img[cint[1]-dim//2-20:cint[1]+dim//2+20, cint[0]-dim//2-20:cint[0]+dim//2+20] = nimg
 
+            # shift to origin
             zelda_pupil[idx] = imutils.shift(img, cc-c)
 
-        zelda_pupil = zelda_pupil[:, :dim, :dim]
+        # copy in final cube
+        zelda_pupils[cube_idx:cube_idx+nframes] = zelda_pupil[:, :dim, :dim]
 
-        zelda_pupils.append(zelda_pupil)
+        del zelda_pupil
+        
+        cube_idx += nframes
     
-    return clear_pupil, zelda_pupils, c    
+    return clear_pupil, zelda_pupils, c
     
 
 def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
