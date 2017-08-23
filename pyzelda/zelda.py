@@ -8,9 +8,10 @@ arthur.vigan@lam.fr
 
 import numpy as np
 
-import utils.mft as mft
-import utils.imutils as imutils
-import utils.aperture as aperture
+import pyzelda.utils.mft as mft
+import pyzelda.utils.imutils as imutils
+import pyzelda.utils.aperture as aperture
+import pyzelda.utils.circle_fit as circle_fit
 
 import poppy.zernike as zernike
 import scipy.ndimage as ndimage
@@ -59,7 +60,7 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
     c : vector_like
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
     '''
-    
+
     # read data
     clear_pupil = fits.getdata(path+clear_pupil_file+'.fits')
     if clear_pupil.ndim == 3:
@@ -100,7 +101,7 @@ def read_files(path, clear_pupil_file, zelda_pupil_file, dark_file, dim=500, cen
             diff = tmp-tmp_flt
             cc = np.where(diff != 0)
             
-            cx, cy, R, residuals = imutils.least_square_circle(cc[0], cc[1])
+            cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
             c = np.array((cx, cy))
             c = np.roll(c, 1)
         elif (center_method == 'com'):
@@ -221,7 +222,7 @@ def read_files_sequence(path, clear_pupil_files, zelda_pupil_files, dark_files, 
             diff = tmp-tmp_flt
             cc = np.where(diff != 0)
             
-            cx, cy, R, residuals = imutils.least_square_circle(cc[0], cc[1])
+            cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
             c = np.array((cx, cy))
             c = np.roll(c, 1)
         elif (center_method == 'com'):
@@ -408,7 +409,7 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     return reference_wave, expi
 
 
-def analyse(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=False):
+def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=False):
     '''
     Performs the ZELDA data analysis using the outputs provided by the read_files() function.
     
