@@ -131,7 +131,7 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
         return 0
 
     cint = c.astype(np.int)
-    cc = dim//2
+    cc   = dim//2
     
     clear_pupil = imutils.shift(clear_pupil, cc-c)
     clear_pupil = clear_pupil[:dim, :dim]
@@ -150,7 +150,7 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
             nframes_total += img.shape[0]
 
     zelda_pupils = np.empty((nframes_total, dim, dim))
-    cube_idx = 0
+    frame_idx = 0
     for fname in zelda_pupil_files:
         print(fname)
 
@@ -160,7 +160,8 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
             zelda_pupil = zelda_pupil[:, :, 1024:]
         else:
             zelda_pupil = zelda_pupil[np.newaxis, :, 1024:]        
-        
+
+        # loop over all frames in cube
         nframes = len(zelda_pupil)
         for idx in range(nframes):
             print(' * frame {0} / {1}'.format(idx+1, nframes))
@@ -168,21 +169,17 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
             img = img - dark
 
             # clean zelda image (extract only pupil to be faster)
-            nimg = img[cint[1]-dim//2-20:cint[1]+dim//2+20, cint[0]-dim//2-20:cint[0]+dim//2+20]
+            nimg = img[cint[1]-cc-10:cint[1]+cc+10, cint[0]-cc-10:cint[0]+cc+10]
             nimg = imutils.sigma_filter(nimg, box=5, nsigma=3, iterate=True)
+            nimg = imutils.shift(nimg, cint-c-10)
+
+            # save centered image
+            zelda_pupils[frame_idx] = nimg[:dim, :dim]
+
+            frame_idx += 1
             
-            img[cint[1]-dim//2-20:cint[1]+dim//2+20, cint[0]-dim//2-20:cint[0]+dim//2+20] = nimg
-
-            # shift to origin
-            zelda_pupil[idx] = imutils.shift(img, cc-c)
-
-        # copy in final cube
-        zelda_pupils[cube_idx:cube_idx+nframes] = zelda_pupil[:, :dim, :dim]
-
         del zelda_pupil
         
-        cube_idx += nframes
-    
     return clear_pupil, zelda_pupils, c
     
 
