@@ -16,9 +16,9 @@ dark_file = 'SPHERE_GEN_BACKGROUND'
 
 wave = 1.642e-6
 
-clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_file, zelda_pupil_file, dark_file)
+clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_file, zelda_pupil_file, dark_file, dim=384)
 
-opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave)
+opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave, pupil_diameter=384)
 
 
 fig = plt.figure(0, figsize=(15, 5))
