@@ -10,13 +10,13 @@ import pyzelda.zelda as zelda
 
 data_path = os.path.join(path, 'data/')
 
-clear_pupil_file = 'SPHERE_GEN_CLEAR_PUPIL'
-zelda_pupil_file = 'SPHERE_GEN_ZELDA_PUPIL'
+clear_pupil_files = ['SPHERE_GEN_CLEAR_PUPIL_1', 'SPHERE_GEN_CLEAR_PUPIL_2']
+zelda_pupil_files = ['SPHERE_GEN_ZELDA_PUPIL_1', 'SPHERE_GEN_ZELDA_PUPIL_2']
 dark_file = 'SPHERE_GEN_BACKGROUND'
 
 wave = 1.642e-6
 
-clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_file, zelda_pupil_file, dark_file, dim=384)
+clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_files, zelda_pupil_files, dark_file, dim=384)
 
 opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave, pupil_diameter=384)
 
@@ -24,10 +24,15 @@ opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave, pupil_diameter=384)
 fig = plt.figure(0, figsize=(15, 5))
 plt.clf()
 ax = fig.add_subplot(131)
-ax.imshow(clear_pupil)
+ax.imshow(clear_pupil, aspect='equal')
+ax.title('Clear pupil')
 
 ax = fig.add_subplot(132)
-ax.imshow(zelda_pupil.squeeze())
+ax.imshow(zelda_pupil.mean(axis=0), aspect='equal')
+ax.title('ZELDA pupil')
 
 ax = fig.add_subplot(133)
-ax.imshow(opd_map.squeeze())
+ax.imshow(opd_map.mean(axis=0), aspect='equal', vmin=-100, vmax=-100)
+ax.title('OPD map')
+
+plt.tight_layout()
