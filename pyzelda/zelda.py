@@ -313,7 +313,7 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     return clear_pupil, zelda_pupil, center
 
 
-def refraction_index(wave, material):    
+def refractive_index(wave, material):    
     pass
 
 
