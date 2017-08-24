@@ -464,7 +464,7 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     overwrite : bool
         If set to True, the OPD maps are saved inside the zelda_pupil
         array to save memory. Otherwise, a distinct OPD array is
-        returned.
+        returned. Do not use if you're not a ZELDA High Master :-)
     
     silent : bool, optional
         Remain silent during the data analysis
@@ -476,6 +476,13 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
 
     '''
 
+    #make sure we have 3D cubes
+    if clear_pupil.ndim == 2:
+        clear_pupil = clear_pupil[np.newaxis, ...]
+
+    if zelda_pupil.ndim == 2:
+        zelda_pupil = zelda_pupil[np.newaxis, ...]
+        
     # create a copy of the zelda pupil array if needed
     if not overwrite:
         zelda_pupil = zelda_pupil.copy()
