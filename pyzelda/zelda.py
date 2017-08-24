@@ -182,8 +182,6 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
     data_cube = np.empty((nframes_total, dim+2*ext, dim+2*ext))
     frame_idx = 0
     for fname in data_files:
-        print(fname)
-
         # read data
         data = fits.getdata(path+fname+'.fits')
         if data.ndim == 2:
@@ -481,6 +479,12 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     # create a copy of the zelda pupil array if needed
     if not overwrite:
         zelda_pupil = zelda_pupil.copy()
+
+    # make sure wave is an array
+    if type(wave) is not list:
+        wave = [wave]
+    wave  = np.array(wave)
+    nwave = wave.size
     
     # ++++++++++++++++++++++++++++++++++
     # Geometrical parameters
@@ -489,9 +493,12 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     Rpuppix = pupil_diameter/2
     
     # ++++++++++++++++++++++++++++++++++
-    # Reference wave
+    # Reference wave(s)
     # ++++++++++++++++++++++++++++++++++
-    reference_wave, expi = create_reference_wave(dimtab, wave=wave, pupil_diameter=pupil_diameter)
+    mask_diffraction_prop = []
+    for w in wave:
+        reference_wave, expi = create_reference_wave(dimtab, wave=w, pupil_diameter=pupil_diameter)
+        mask_diffraction_prop.append((reference_wave, expi))        
     
     # ++++++++++++++++++++++++++++++++++
     # Phase reconstruction from data
@@ -505,6 +512,9 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
     if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
         raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
+
+    if (nwave != 1) and (nwave != nframes_zelda):
+        raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
     
     for idx in range(nframes_zelda):
         print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
@@ -517,6 +527,18 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
         zelda_norm = zelda_norm.squeeze()
         zelda_norm[~pup] = 0
 
+        # mask_diffraction_prop array contains the mask diffracted properties:
+        #  - [0] reference wave
+        #  - [1] dephasing term
+        if nwave == 1:
+            cwave = wave[0]
+            reference_wave = mask_diffraction_prop[0][0]
+            expi = mask_diffraction_prop[0][1]
+        else:
+            cwave = wave[idx]
+            reference_wave = mask_diffraction_prop[idx][0]
+            expi = mask_diffraction_prop[idx][1]
+            
         # determinant calculation
         delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
                 ((1-zelda_norm) / reference_wave) * (1-expi.real)
@@ -543,7 +565,7 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
         theta[~pup] = 0
 
         # optical path difference in nm
-        kw = 2*np.pi / wave
+        kw = 2*np.pi / cwave
         opd_nm = (1/kw) * theta * 1e9
 
         # statistics
