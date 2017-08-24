@@ -313,6 +313,10 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     return clear_pupil, zelda_pupil, center
 
 
+def refraction_index(wave, material):    
+    pass
+
+
 def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     '''
     Simulate the ZELDA reference wave
