@@ -313,8 +313,38 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     return clear_pupil, zelda_pupil, center
 
 
-def refractive_index(wave, material):    
-    pass
+def refractive_index(wave, material):
+    '''
+    compute the refractive index of a material at a given wavelength
+    database: https://refractiveindex.info/
+    
+    Parameters
+    ----------
+    
+    wave: wavelength in m
+    
+    material: name of the material
+    
+    Returns
+    -------
+    
+    n: the refractive index value using the Sellmeier formula
+
+    '''
+    # convert wave from m to um
+    wave = wave*1e6 
+    
+    if material == 'fused_silica':
+        params = {'B1':0.6961663, 'B2':0.4079426, 'B3':0.8974794, 
+                    'C1':0.0684043, 'C2':0.1162414, 'C3':9.896161}
+    else:
+        raise ValueError('Unknown material!!!')
+    
+    n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +\
+            params['B2']*wave**2/(wave**2-params['C2']**2) +\
+            params['B3']*wave**2/(wave**2-params['C3']**2)) 
+    
+    return n
 
 
 def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
