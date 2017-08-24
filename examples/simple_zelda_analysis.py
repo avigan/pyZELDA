@@ -18,7 +18,7 @@ zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE
 dark_file = 'SPHERE_BACKGROUND'
 
 clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_files, zelda_pupil_files, dark_file,
-                                                    dim=390, collapse_clear=True, collapse_zelda=True)
+                                                    dim=390, collapse_clear=True, collapse_zelda=False)
 
 opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave, pupil_diameter=384)
 
@@ -30,7 +30,7 @@ ax.imshow(clear_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000)
 ax.set_title('Clear pupil')
 
 ax = fig.add_subplot(132)
-ax.imshow(zelda_pupil.mean(axis=0), aspect='equal')#, vmin=0, vmax=15000)
+ax.imshow(zelda_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000)
 ax.set_title('ZELDA pupil')
 
 ax = fig.add_subplot(133)
