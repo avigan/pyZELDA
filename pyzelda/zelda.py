@@ -20,8 +20,7 @@ import scipy.ndimage as ndimage
 from astropy.io import fits
 
 
-
-def read_data_file(data_files, path):
+def load_data(data_files, path):
 	'''
 	read data from a file and check the nature of data (single frame or cube) 
 
@@ -164,10 +163,10 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     '''
    
     # read clear pupil data (collapsed)   
-	clear_pupil = read_data_file(clear_pupil_files, path)
+	clear_pupil = load_data(clear_pupil_files, path)
 	
     # read dark data (collapsed)	
-	dark        = read_data_file(dark_files, path)	
+	dark        = load_data(dark_files, path)	
     
     # subtract background and correct for bad pixels
     clear_pupil = clear_pupil - dark
