@@ -19,7 +19,7 @@ import scipy.ndimage as ndimage
 
 from astropy.io import fits
 
-def pupil_center(clear_pupil, center=(), center_method='fit')
+def pupil_center(clear_pupil, center=(), center_method='fit'):
     # center
     if (len(center) == 0):
         # recenter
@@ -133,7 +133,7 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     clear_pupil = clear_pupil - dark
     clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
 
-	c = pupil_center(clear_pupil, center, center_method)
+    c = pupil_center(clear_pupil, center, center_method)
     # center
 #     if (len(center) == 0):
 #         # recenter
@@ -395,6 +395,9 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
     # ++++++++++++++++++++++++++++++++++
     pup = aperture.disc(dimtab, Rpuppix, mask=True, cpix=True, strict=True)
 
+    # copy of the input zelda pupil image
+    zelda_pupil = zelda_pupil.copy()
+    
     if zelda_pupil.ndim == 2:
         #
         # 2D image
