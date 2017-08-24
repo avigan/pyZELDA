@@ -4,6 +4,7 @@
 pyZELDA main module
 
 arthur.vigan@lam.fr
+mamadou.ndiaye@oca.eu
 '''
 
 import os
@@ -20,67 +21,86 @@ import scipy.ndimage as ndimage
 from astropy.io import fits
 
 
-def load_data(data_files, path):
-	'''
-	read data from a file and check the nature of data (single frame or cube) 
+def number_of_frames(path, data_files):
+    '''
+    Returns the total number of frames in a sequence of files
 
-	Parameters:
-    ----------	
-
+    Parameters
+    ----------
+    path : str
+        Path to the directory that contains the FITS files
+    
     data_files : str
         List of files that contains the data, without the .fits
 
+    Returns
+    -------
+    nframes_total : int
+        Total number of frames
+    '''
+    if type(data_files) is not list:
+        data_files = [data_files]
+    
+    nframes_total = 0
+    for fname in data_files:
+        img = fits.getdata(os.path.join(path, fname+'.fits'))
+        if img.ndim == 2:
+            nframes_total += 1
+        elif img.ndim == 3:
+            nframes_total += img.shape[0]
+            
+    return nframes_total  
+
+
+def load_data(path, data_files):
+    '''
+    read data from a file and check the nature of data (single frame or cube) 
+
+    Parameters:
+    ----------
     path : str
         Path to the directory that contains the FITS files
+    
+    data_files : str
+        List of files that contains the data, without the .fits
 
     Returns
-    -------	
-    
-    clear_pupil : array_like
-        Array containing the collapsed data
-	
-	'''
+    -------
+    clear_cube : array_like
+        Array containing the collapsed data    
+    '''
 
+    # make sure we have a list
     if type(data_files) is not list:
-        data_pupil = fits.getdata(path+data_files+'.fits')
-        data_pupil = data_pupil[:,1024:]
-    else:
-    	nframes_total = 0
-    	for fname in data_files:
-        	img = fits.getdata(os.path.join(path, fname+'.fits'))
-        	if img.ndim == 2:
-            	nframes_total += 1
-        	elif img.ndim == 3:
-            	nframes_total += img.shape[0]    
-    
-        data_pupil = np.zeros((nframes_total, 1024, 1024))
-        frame_idx = 0
-        for fname in data_files:
-            data = fits.getdata(path+fname+'.fits')
-			if data.ndim == 2:
-				data_pupil[frame_idx] = data
-				frame_idx += 1
-			else:
-				nframes = data.shape[0]
-				data_pupil[frame_idx:frame_idx+nframes] = data[:, :, 1024:]
-				frame_idx += nframes
-    
-    return data_pupil
+        data_files = [data_files]
+
+    # get number of frames
+    nframes_total = number_of_frames(path, data_files)
+
+    # load data
+    data_cube = np.zeros((nframes_total, 1024, 1024))
+    frame_idx = 0
+    for fname in data_files:
+        data = fits.getdata(path+fname+'.fits')        
+        if data.ndim == 2:
+            data = data[np.newaxis, ...]
+        
+        nframes = data.shape[0]
+        data_cube[frame_idx:frame_idx+nframes] = data[:, :, 1024:]
+        frame_idx += nframes
+                
+    return data_cube
 
 
-def pupil_center(clear_pupil, center=(), center_method='fit'):
-	'''
-	find the center of the clear pupil
-	
-	Parameters:
+def pupil_center(clear_pupil, center_method):
+    '''
+    find the center of the clear pupil
+  
+    Parameters:
     ----------
 
     clear_pupil : array_like
         Array containing the collapsed clear pupil data
-            	
-    center : tuple, optional
-        Specify the center of the pupil in raw data coordinations.
-        Default is '()', i.e. the center will be determined by the routine	
 
     center_method : str, optional
         Method to be used for finding the center of the pupil:
@@ -91,55 +111,110 @@ def pupil_center(clear_pupil, center=(), center_method='fit'):
     -------	
     c : vector_like
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format	
-	'''
+    '''
 
-    # center
-    if (len(center) == 0):
-        # recenter
-        tmp = clear_pupil / np.max(clear_pupil)
-        tmp = (tmp >= 0.2).astype(int)
-        
-        if (center_method == 'fit'):
-            # circle fit
-            kernel = np.ones((10, 10), dtype=int)
-            tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
-            
-            kernel = np.ones((3, 3), dtype=int)
-            tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
-            
-            diff = tmp-tmp_flt
-            cc = np.where(diff != 0)
-            
-            cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
-            c = np.array((cx, cy))
-            c = np.roll(c, 1)
-        elif (center_method == 'com'):
-            # center of mass (often fails)
-            c = np.array(ndimage.center_of_mass(tmp))
-            c = np.roll(c, 1)
-        else:
-            raise NameError('Unkown centring method '+center_method)
+    # recenter
+    tmp = clear_pupil / np.max(clear_pupil)
+    tmp = (tmp >= 0.2).astype(int)
 
-        print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
-    elif (len(center) == 2):
-        c = np.array(center)
+    if (center_method == 'fit'):
+        # circle fit
+        kernel = np.ones((10, 10), dtype=int)
+        tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
+
+        kernel = np.ones((3, 3), dtype=int)
+        tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
+
+        diff = tmp-tmp_flt
+        cc = np.where(diff != 0)
+
+        cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
+        c = np.array((cx, cy))
+        c = np.roll(c, 1)
+    elif (center_method == 'com'):
+        # center of mass (often fails)
+        c = np.array(ndimage.center_of_mass(tmp))
+        c = np.roll(c, 1)
     else:
-        raise NameError('Error, you must pass 2 values for center')
-        return 0
+        raise NameError('Unkown centring method '+center_method)
+
+    print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
         
     return c
 
-def number_of_frames(path, data_files):
-    nframes_total = 0
-    for fname in data_files:
-        img = fits.getdata(os.path.join(path, fname+'.fits'))
-        if img.ndim == 2:
-            nframes_total += 1
-        elif img.ndim == 3:
-            nframes_total += img.shape[0]
-    return nframes_total  
 
-def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit'):
+def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
+    '''
+    Read data cubes from disk and recenter them
+
+    Parameters
+    ----------
+    path : str
+        Path to the directory that contains the TIFF files
+    
+    data_files : str
+        List of files to read, without the .fits
+    
+    dark : array_like
+        Dark frame to be subtracted to all images
+
+    dim : int, optional
+        Size of the final arrays
+
+    center : vector_like
+        Center of the pupil in the images
+
+    collapse : bool
+        Collapse or not the cubes
+    '''
+    center = np.array(center)
+    cint = center.astype(np.int)
+    cc   = dim//2
+        
+    # read zelda pupil data (all frames)
+    if type(data_files) is not list:
+        data_files = [data_files]
+
+    # determine total number of frames
+    nframes_total = number_of_frames(path, data_files)
+
+    ext = 5
+    data_cube = np.empty((nframes_total, dim+2*ext, dim+2*ext))
+    frame_idx = 0
+    for fname in data_files:
+        print(fname)
+
+        # read data
+        data = fits.getdata(path+fname+'.fits')
+        if data.ndim == 2:
+            data = data[np.newaxis, ...]
+        nframes = data.shape[0]
+        data_cube[frame_idx:frame_idx+nframes] = data[:, cint[1]-cc-ext:cint[1]+cc+ext, 1024+cint[0]-cc-ext:1024+cint[0]+cc+ext]
+        frame_idx += nframes
+        
+        del data
+
+    # collapse if needed
+    if collapse:
+        data_cube = data_cube.mean(axis=0, keepdims=True)
+
+    # clean and recenter images
+    dark_sub = dark[cint[1]-cc-ext:cint[1]+cc+ext, cint[0]-cc-ext:cint[0]+cc+ext]
+    for idx, img in enumerate(data_cube):
+        img = img - dark_sub
+
+        img = imutils.sigma_filter(img, box=5, nsigma=3, iterate=True)
+        img = imutils.shift(img, cint-center-ext)
+        
+        data_cube[idx] = img
+    
+    data_cube = data_cube[:, :dim, :dim]
+        
+    return data_cube
+
+
+def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit',
+               collapse_clear=False, collapse_zelda=False):
     '''
     Read a sequence of ZELDA files from disk and prepare them for analysis
     
@@ -168,6 +243,12 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
         Method to be used for finding the center of the pupil:
          - 'fit': least squares circle fit (default)
          - 'com': center of mass
+
+    collapse_clear : bool
+        Collapse the clear pupil images. Default is False
+    
+    collapse_zelda : bool
+        Collapse the zelda pupil images. Default is False
     
     Returns
     -------
@@ -181,84 +262,58 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
     '''
 
-	# read number of frames
-	nframes_clear = number_of_frames(path, clear_pupil_files)	
-	nframes_dark  = number_of_frames(path, dark_files)	
-	nframes_zelda = number_of_frames(path, zelda_pupil_files)	
-	
-	print nframes_clear
-	print nframes_dark
-	print nframes_zelda
-	
-	stop
-		   
-    # read clear pupil data
-	clear_pupil = load_data(clear_pupil_files, path)
-	
+    ##############################
+    # Deal with files
+    ##############################
+    
+    # read number of frames
+    nframes_clear = number_of_frames(path, clear_pupil_files)	
+    nframes_zelda = number_of_frames(path, zelda_pupil_files)	
+
+    print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+    print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+    
+    # make sure we have compatible data sets
+    if (nframes_zelda == 1) or collapse_zelda:
+        if nframes_clear != 1:
+            collapse_clear = True
+            print(' * automatic collapse of clear pupil to match ZELDA data')
+    else:
+        if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
+            raise ValueError('Incompatible number of frames between ZELDA and clear pupil. You could use collapse_clear=True.')
+    
     # read dark data	
-	dark = load_data(dark_files, path)
-	dark = dark.mean(axis=0)	
+    dark = load_data(path, dark_files)
+    dark = dark.mean(axis=0)
+
+    # read clear pupil data
+    clear_pupil = load_data(path, clear_pupil_files)
     
+    ##############################
+    # Center determination
+    ##############################
+    
+    # collapse clear pupil image
+    clear_pupil_collapse = clear_pupil.mean(axis=0, keepdims=True)
+
     # subtract background and correct for bad pixels
-    for img in clear_pupil:
-	    img -= dark
-    clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
-
-	# search for the pupil center
-	c = pupil_center(clear_pupil, center, center_method)
-
-    cint = c.astype(np.int)
-    cc   = dim//2
+    clear_pupil_collapse -= dark
+    clear_pupil_collapse = imutils.sigma_filter(clear_pupil_collapse.squeeze(), box=5, nsigma=3, iterate=True)
     
-    clear_pupil = imutils.shift(clear_pupil, cc-c)
-    clear_pupil = clear_pupil[:dim, :dim]
+    # search for the pupil center
+    if len(center) == 0:
+        center = pupil_center(clear_pupil_collapse, center_method)
+    elif len(center) != 2:
+        raise ValueError('Error, you must pass 2 values for center')
+
+    ##############################
+    # Clean and recenter images
+    ##############################
+    clear_pupil = recentred_data_cubes(path, clear_pupil_files, dark, dim, center, collapse_clear)
+    zelda_pupil = recentred_data_cubes(path, zelda_pupil_files, dark, dim, center, collapse_zelda)
     
-    # read zelda pupil data (all frames)
-    if type(zelda_pupil_files) is not list:
-        zelda_pupil_files = [zelda_pupil_files]
+    return clear_pupil, zelda_pupil, center
 
-    # determine total number of frames
-    nframes_total = 0
-    for fname in zelda_pupil_files:
-        img = fits.getdata(os.path.join(path, fname+'.fits'))
-        if img.ndim == 2:
-            nframes_total += 1
-        elif img.ndim == 3:
-            nframes_total += img.shape[0]
-
-    zelda_pupils = np.empty((nframes_total, dim, dim))
-    frame_idx = 0
-    for fname in zelda_pupil_files:
-        print(fname)
-
-        # read data
-        zelda_pupil = fits.getdata(path+fname+'.fits')
-        if zelda_pupil.ndim == 3:
-            zelda_pupil = zelda_pupil[:, :, 1024:]
-        else:
-            zelda_pupil = zelda_pupil[np.newaxis, :, 1024:]        
-
-        # loop over all frames in cube
-        nframes = len(zelda_pupil)
-        for idx in range(nframes):
-            print(' * frame {0} / {1}'.format(idx+1, nframes))
-            img = zelda_pupil[idx]
-            img = img - dark
-
-            # clean zelda image (extract only pupil to be faster)
-            nimg = img[cint[1]-cc-10:cint[1]+cc+10, cint[0]-cc-10:cint[0]+cc+10]
-            nimg = imutils.sigma_filter(nimg, box=5, nsigma=3, iterate=True)
-            nimg = imutils.shift(nimg, cint-c-10)
-
-            # save centered image
-            zelda_pupils[frame_idx] = nimg[:dim, :dim]
-
-            frame_idx += 1
-            
-        del zelda_pupil
-        
-    return clear_pupil, zelda_pupils, c
-    
 
 def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     '''
