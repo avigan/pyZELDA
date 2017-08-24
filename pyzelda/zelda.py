@@ -19,6 +19,43 @@ import scipy.ndimage as ndimage
 
 from astropy.io import fits
 
+def pupil_center(clear_pupil, center=(), center_method='fit')
+    # center
+    if (len(center) == 0):
+        # recenter
+        tmp = clear_pupil / np.max(clear_pupil)
+        tmp = (tmp >= 0.2).astype(int)
+        
+        if (center_method == 'fit'):
+            # circle fit
+            kernel = np.ones((10, 10), dtype=int)
+            tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
+            
+            kernel = np.ones((3, 3), dtype=int)
+            tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
+            
+            diff = tmp-tmp_flt
+            cc = np.where(diff != 0)
+            
+            cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
+            c = np.array((cx, cy))
+            c = np.roll(c, 1)
+        elif (center_method == 'com'):
+            # center of mass (often fails)
+            c = np.array(ndimage.center_of_mass(tmp))
+            c = np.roll(c, 1)
+        else:
+            raise NameError('Unkown centring method '+center_method)
+
+        print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
+    elif (len(center) == 2):
+        c = np.array(center)
+    else:
+        raise NameError('Error, you must pass 2 values for center')
+        return 0
+        
+    return c
+
 
 def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit'):
     '''
@@ -96,39 +133,40 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     clear_pupil = clear_pupil - dark
     clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
 
+	c = pupil_center(clear_pupil, center, center_method)
     # center
-    if (len(center) == 0):
-        # recenter
-        tmp = clear_pupil / np.max(clear_pupil)
-        tmp = (tmp >= 0.2).astype(int)
-        
-        if (center_method == 'fit'):
-            # circle fit
-            kernel = np.ones((10, 10), dtype=int)
-            tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
-            
-            kernel = np.ones((3, 3), dtype=int)
-            tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
-            
-            diff = tmp-tmp_flt
-            cc = np.where(diff != 0)
-            
-            cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
-            c = np.array((cx, cy))
-            c = np.roll(c, 1)
-        elif (center_method == 'com'):
-            # center of mass (often fails)
-            c = np.array(ndimage.center_of_mass(tmp))
-            c = np.roll(c, 1)
-        else:
-            raise NameError('Unkown centring method '+center_method)
-
-        print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
-    elif (len(center) == 2):
-        c = np.array(center)
-    else:
-        raise NameError('Error, you must pass 2 values for center')
-        return 0
+#     if (len(center) == 0):
+#         # recenter
+#         tmp = clear_pupil / np.max(clear_pupil)
+#         tmp = (tmp >= 0.2).astype(int)
+#         
+#         if (center_method == 'fit'):
+#             # circle fit
+#             kernel = np.ones((10, 10), dtype=int)
+#             tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
+#             
+#             kernel = np.ones((3, 3), dtype=int)
+#             tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
+#             
+#             diff = tmp-tmp_flt
+#             cc = np.where(diff != 0)
+#             
+#             cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
+#             c = np.array((cx, cy))
+#             c = np.roll(c, 1)
+#         elif (center_method == 'com'):
+#             # center of mass (often fails)
+#             c = np.array(ndimage.center_of_mass(tmp))
+#             c = np.roll(c, 1)
+#         else:
+#             raise NameError('Unkown centring method '+center_method)
+# 
+#         print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
+#     elif (len(center) == 2):
+#         c = np.array(center)
+#     else:
+#         raise NameError('Error, you must pass 2 values for center')
+#         return 0
 
     cint = c.astype(np.int)
     cc   = dim//2
