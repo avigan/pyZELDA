@@ -19,7 +19,69 @@ import scipy.ndimage as ndimage
 
 from astropy.io import fits
 
+
+def load_data(data_files, path):
+    '''
+    read data from a file and check the nature of data (single frame or cube) 
+
+    Parameters:
+    ----------	
+
+    data_files : str
+        List of files that contains the data, without the .fits
+
+    path : str
+        Path to the directory that contains the FITS files
+
+    Returns
+    -------	
+    
+    clear_pupil : array_like
+        Array containing the collapsed data
+    '''
+
+    if type(data_files) is not list:
+        data_pupil = fits.getdata(path+data_files+'.fits')
+        if data_pupil.ndim == 3:
+            data_pupil = data_pupil.mean(axis=0)
+    else:
+        nfiles = len(data_files)
+        data_pupil = np.zeros((1024, 2048))
+        for fname in data_files:
+            data = fits.getdata(path+fname+'.fits')
+            if data.ndim == 3:
+                data = data.mean(axis=0)
+            data_pupil += data / nfiles
+    data_pupil = data_pupil[:, 1024:]
+    
+    return data_pupil
+
+
 def pupil_center(clear_pupil, center=(), center_method='fit'):
+    '''
+    find the center of the clear pupil
+    
+    Parameters:
+    ----------
+
+    clear_pupil : array_like
+        Array containing the collapsed clear pupil data
+    
+    center : tuple, optional
+        Specify the center of the pupil in raw data coordinations.
+        Default is '()', i.e. the center will be determined by the routine	
+
+    center_method : str, optional
+        Method to be used for finding the center of the pupil:
+         - 'fit': least squares circle fit (default)
+         - 'com': center of mass
+
+    Returns
+    -------	
+    c : vector_like
+        Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format	
+    '''
+
     # center
     if (len(center) == 0):
         # recenter
@@ -98,75 +160,19 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     c : vector_like
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
     '''
-
-    # read clear pupil data (collapsed)
-    if type(clear_pupil_files) is not list:
-        clear_pupil = fits.getdata(path+clear_pupil_files+'.fits')
-        if clear_pupil.ndim == 3:
-            clear_pupil = clear_pupil.mean(axis=0)
-    else:
-        nfiles = len(clear_pupil_files)
-        clear_pupil = np.zeros((1024, 2048))
-        for fname in clear_pupil_files:
-            data = fits.getdata(path+fname+'.fits')
-            if data.ndim == 3:
-                data = data.mean(axis=0)
-            clear_pupil += data / nfiles
-    clear_pupil = clear_pupil[:, 1024:]
-
-    # read dark data (collapsed)
-    if type(dark_files) is not list:
-        dark = fits.getdata(path+dark_files+'.fits')
-        if dark.ndim == 3:
-            dark = dark.mean(axis=0)
-    else:
-        nfiles = len(dark_files)
-        dark = np.zeros((1024, 2048))
-        for fname in dark_files:
-            data = fits.getdata(path+fname+'.fits')
-            if data.ndim == 3:
-                data = data.mean(axis=0)
-            dark += data / nfiles                        
-    dark = dark[:, 1024:]
+   
+    # read clear pupil data (collapsed)   
+    clear_pupil = load_data(clear_pupil_files, path)
+    
+    # read dark data (collapsed)	
+    dark        = load_data(dark_files, path)	
     
     # subtract background and correct for bad pixels
     clear_pupil = clear_pupil - dark
     clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
 
+    # search for the pupil center
     c = pupil_center(clear_pupil, center, center_method)
-    # center
-#     if (len(center) == 0):
-#         # recenter
-#         tmp = clear_pupil / np.max(clear_pupil)
-#         tmp = (tmp >= 0.2).astype(int)
-#         
-#         if (center_method == 'fit'):
-#             # circle fit
-#             kernel = np.ones((10, 10), dtype=int)
-#             tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
-#             
-#             kernel = np.ones((3, 3), dtype=int)
-#             tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
-#             
-#             diff = tmp-tmp_flt
-#             cc = np.where(diff != 0)
-#             
-#             cx, cy, R, residuals = circle_fit.least_square_circle(cc[0], cc[1])
-#             c = np.array((cx, cy))
-#             c = np.roll(c, 1)
-#         elif (center_method == 'com'):
-#             # center of mass (often fails)
-#             c = np.array(ndimage.center_of_mass(tmp))
-#             c = np.roll(c, 1)
-#         else:
-#             raise NameError('Unkown centring method '+center_method)
-# 
-#         print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
-#     elif (len(center) == 2):
-#         c = np.array(center)
-#     else:
-#         raise NameError('Error, you must pass 2 values for center')
-#         return 0
 
     cint = c.astype(np.int)
     cc   = dim//2
