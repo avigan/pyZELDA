@@ -2,7 +2,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 
-path = '/Users/avigan/Work/GitHub/pyZELDA/'
+path = '/Users/mndiaye/Dropbox/python/zelda/pyZELDA/'
 if path not in sys.path:
     sys.path.append(path)
 import pyzelda.zelda as zelda

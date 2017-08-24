@@ -21,10 +21,10 @@ from astropy.io import fits
 
 
 def load_data(data_files, path):
-    '''
-    read data from a file and check the nature of data (single frame or cube) 
+	'''
+	read data from a file and check the nature of data (single frame or cube) 
 
-    Parameters:
+	Parameters:
     ----------	
 
     data_files : str
@@ -38,35 +38,46 @@ def load_data(data_files, path):
     
     clear_pupil : array_like
         Array containing the collapsed data
-    '''
+	
+	'''
 
     if type(data_files) is not list:
         data_pupil = fits.getdata(path+data_files+'.fits')
-        if data_pupil.ndim == 3:
-            data_pupil = data_pupil.mean(axis=0)
+        data_pupil = data_pupil[:,1024:]
     else:
-        nfiles = len(data_files)
-        data_pupil = np.zeros((1024, 2048))
+    	nframes_total = 0
+    	for fname in data_files:
+        	img = fits.getdata(os.path.join(path, fname+'.fits'))
+        	if img.ndim == 2:
+            	nframes_total += 1
+        	elif img.ndim == 3:
+            	nframes_total += img.shape[0]    
+    
+        data_pupil = np.zeros((nframes_total, 1024, 1024))
+        frame_idx = 0
         for fname in data_files:
             data = fits.getdata(path+fname+'.fits')
-            if data.ndim == 3:
-                data = data.mean(axis=0)
-            data_pupil += data / nfiles
-    data_pupil = data_pupil[:, 1024:]
+			if data.ndim == 2:
+				data_pupil[frame_idx] = data
+				frame_idx += 1
+			else:
+				nframes = data.shape[0]
+				data_pupil[frame_idx:frame_idx+nframes] = data[:, :, 1024:]
+				frame_idx += nframes
     
     return data_pupil
 
 
 def pupil_center(clear_pupil, center=(), center_method='fit'):
-    '''
-    find the center of the clear pupil
-    
-    Parameters:
+	'''
+	find the center of the clear pupil
+	
+	Parameters:
     ----------
 
     clear_pupil : array_like
         Array containing the collapsed clear pupil data
-    
+            	
     center : tuple, optional
         Specify the center of the pupil in raw data coordinations.
         Default is '()', i.e. the center will be determined by the routine	
@@ -80,7 +91,7 @@ def pupil_center(clear_pupil, center=(), center_method='fit'):
     -------	
     c : vector_like
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format	
-    '''
+	'''
 
     # center
     if (len(center) == 0):
@@ -118,6 +129,15 @@ def pupil_center(clear_pupil, center=(), center_method='fit'):
         
     return c
 
+def number_of_frames(path, data_files):
+    nframes_total = 0
+    for fname in data_files:
+        img = fits.getdata(os.path.join(path, fname+'.fits'))
+        if img.ndim == 2:
+            nframes_total += 1
+        elif img.ndim == 3:
+            nframes_total += img.shape[0]
+    return nframes_total  
 
 def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit'):
     '''
@@ -160,19 +180,32 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     c : vector_like
         Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
     '''
-   
-    # read clear pupil data (collapsed)   
-    clear_pupil = load_data(clear_pupil_files, path)
-    
-    # read dark data (collapsed)	
-    dark        = load_data(dark_files, path)	
+
+	# read number of frames
+	nframes_clear = number_of_frames(path, clear_pupil_files)	
+	nframes_dark  = number_of_frames(path, dark_files)	
+	nframes_zelda = number_of_frames(path, zelda_pupil_files)	
+	
+	print nframes_clear
+	print nframes_dark
+	print nframes_zelda
+	
+	stop
+		   
+    # read clear pupil data
+	clear_pupil = load_data(clear_pupil_files, path)
+	
+    # read dark data	
+	dark = load_data(dark_files, path)
+	dark = dark.mean(axis=0)	
     
     # subtract background and correct for bad pixels
-    clear_pupil = clear_pupil - dark
+    for img in clear_pupil:
+	    img -= dark
     clear_pupil = imutils.sigma_filter(clear_pupil, box=5, nsigma=3, iterate=True)
 
-    # search for the pupil center
-    c = pupil_center(clear_pupil, center, center_method)
+	# search for the pupil center
+	c = pupil_center(clear_pupil, center, center_method)
 
     cint = c.astype(np.int)
     cc   = dim//2
@@ -401,9 +434,6 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
     # ++++++++++++++++++++++++++++++++++
     pup = aperture.disc(dimtab, Rpuppix, mask=True, cpix=True, strict=True)
 
-    # copy of the input zelda pupil image
-    zelda_pupil = zelda_pupil.copy()
-    
     if zelda_pupil.ndim == 2:
         #
         # 2D image
