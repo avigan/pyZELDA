@@ -335,14 +335,14 @@ def refractive_index(wave, material):
     wave = wave*1e6 
     
     if material == 'fused_silica':
-        params = {'B1':0.6961663, 'B2':0.4079426, 'B3':0.8974794, 
-                    'C1':0.0684043, 'C2':0.1162414, 'C3':9.896161}
+        params = {'B1': 0.6961663, 'B2': 0.4079426, 'B3': 0.8974794, 
+                  'C1': 0.0684043, 'C2': 0.1162414, 'C3': 9.896161}
     else:
         raise ValueError('Unknown material!!!')
     
-    n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +\
-            params['B2']*wave**2/(wave**2-params['C2']**2) +\
-            params['B3']*wave**2/(wave**2-params['C3']**2)) 
+    n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
+                params['B2']*wave**2/(wave**2-params['C2']**2) +
+                params['B3']*wave**2/(wave**2-params['C3']**2))
     
     return n
 
