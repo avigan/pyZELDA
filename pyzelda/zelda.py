@@ -351,13 +351,13 @@ def refractive_index(wave, material):
     return n
 
 
-def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
+def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fused_silica'):
     '''
     Simulate the ZELDA reference wave
     
     Parameters
     ----------
-    dimtab : int
+    dim : int
         Size of the output array
     
     wave : float, optional
@@ -377,19 +377,6 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     '''
     
     # ++++++++++++++++++++++++++++++++++
-    # Chromaticity parameters
-    # ++++++++++++++++++++++++++++++++++
-    
-    # design wavelength of Zernike mask
-    wave0_m = 1.6255e-6
-    
-    # source wavelength
-    wave_m = wave
-
-    # ratio between design wavelength and source wavelength
-    ratio_wave = wave0_m/wave_m
-
-    # ++++++++++++++++++++++++++++++++++
     # Zernike mask parameters
     # ++++++++++++++++++++++++++++++++++
     
@@ -397,37 +384,24 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     d_m = 70.7e-6
     z_m = 0.8146e-6
     
-    # glass refractive index @ lam=1.6255 um
-    n_glass = 1.44311
+    # substrate refractive index
+    n_substrate = refractive_index(wave, material)
 
     # F ratio in coronagraphic plane
     Fratio = 40
     
-    # R_mask: mask radius in lam0/D unit, R_mask=0.502
-    R_mask = 0.5*d_m / (wave0_m * Fratio)
- 
-    # OPDx: mask phase shift lam0 unit with n the refractive index of the
-    # substrate at the design wavelength lam0
-    OPDx = (n_glass-1)*z_m / wave0_m
+    # R_mask: mask radius in lam0/D unit
+    R_mask = 0.5*d_m / (wave * Fratio)
 
     # ++++++++++++++++++++++++++++++++++
-    # Dimensions in each plane
+    # Dimensions
     # ++++++++++++++++++++++++++++++++++
     
-    # pupil size in the entrance pupil plane
-    NA = pupil_diameter
-  
-    # mask size in the focal plane
-    NB = 300
-    
-    # pupil size in the relayed pupil plane
-    # NC = NA
+    # mask sampling in the focal plane
+    D_mask_pixels = 300
     
     # entrance pupil radius
-    Rpuppix = NA/2
-    
-    # Lyot stop size in entrance pupil diameter
-    ratio_Lyot = 1
+    R_pupil_pixels = pupil_diameter/2
     
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -441,20 +415,20 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     m1 = 2*R_mask
 
     # defintion of the electric field in plane A in the absence of aberrations
-    ampl_PA_noaberr = aperture.disc(dimtab, Rpuppix, cpix=True, strict=True)
+    ampl_PA_noaberr = aperture.disc(dim, R_pupil_pixels, cpix=True, strict=True)
     
     # --------------------------------
     # plane B (Focal plane)
 
     # scaling of the parameter m1 to account for the wavelength of work
-    m1bis = m1 * (dimtab/NA) * ratio_wave
+    m1bis = m1 * (dim/pupil_diameter)
   
     # calculation of the electric field in plane B with MFT within the Zernike
-    # sensor mask in a NBxNB size table
-    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, dimtab, NB, m1bis)
+    # sensor mask
+    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, dim, D_mask_pixels, m1bis)
         
-    # restriction of the MFT with the mask disk of diameter NB/2
-    ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(NB, NB, diameter=True, cpix=True, strict=True)
+    # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
+    ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=True)
       
     # expression of the field in the absence of aberrations without mask
     ampl_PC0_noaberr = ampl_PA_noaberr
@@ -465,8 +439,8 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     # --------------------------------
     # plane C (Relayed pupil plane)
   
-    # mask phase shift phi
-    phi = 2*np.pi*OPDx*wave0_m/wave_m
+    # mask phase shift phi (mask in transmission)
+    phi = 2*np.pi*(n_substrate-1)*z_m/wave
     
     # phasor term associated  with the phase shift
     expi = np.exp(1j*phi)
@@ -475,8 +449,8 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     # definition of parameters for the phase estimate with Zernike
     
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, NB, dimtab, m1bis) * \
-                     aperture.disc(dimtab, Rpuppix*ratio_Lyot, cpix=True, strict=True)
+    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, dim, m1bis) * \
+                     aperture.disc(dim, R_pupil_pixels, cpix=True, strict=True)
 
     return reference_wave, expi
 
@@ -534,21 +508,21 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     # ++++++++++++++++++++++++++++++++++
     # Geometrical parameters
     # ++++++++++++++++++++++++++++++++++
-    dimtab  = clear_pupil.shape[-1]
-    Rpuppix = pupil_diameter/2
+    dim = clear_pupil.shape[-1]
+    R_pupil_pixels = pupil_diameter/2
     
     # ++++++++++++++++++++++++++++++++++
     # Reference wave(s)
     # ++++++++++++++++++++++++++++++++++
     mask_diffraction_prop = []
     for w in wave:
-        reference_wave, expi = create_reference_wave(dimtab, wave=w, pupil_diameter=pupil_diameter)
+        reference_wave, expi = create_reference_wave(dim, wave=w, pupil_diameter=pupil_diameter)
         mask_diffraction_prop.append((reference_wave, expi))        
     
     # ++++++++++++++++++++++++++++++++++
     # Phase reconstruction from data
     # ++++++++++++++++++++++++++++++++++
-    pup = aperture.disc(dimtab, Rpuppix, mask=True, cpix=True, strict=True)
+    pup = aperture.disc(dim, R_pupil_pixels, mask=True, cpix=True, strict=True)
 
     print('ZELDA analysis')
     nframes_clear = len(clear_pupil)
