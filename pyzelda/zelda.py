@@ -445,9 +445,8 @@ def create_reference_wave(dimtab, wave=1.642e-6, pupil_diameter=384):
     return reference_wave, expi
 
 
-def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=False):
-    '''
-    Performs the ZELDA data analysis using the outputs provided by the read_files() function.
+def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwrite=False, silent=False):
+    '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
     
     Parameters
     ----------
@@ -464,6 +463,11 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
     pupil_diameter : int
         Diameter of the pupil, in pixels. Default is 384 (IRDIS)
         
+    overwrite : bool
+        If set to True, the OPD maps are saved inside the zelda_pupil
+        array to save memory. Otherwise, a distinct OPD array is
+        returned.
+    
     silent : bool, optional
         Remain silent during the data analysis
 
@@ -471,12 +475,17 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
     -------
     opd : array_like
         Optical path difference map in nanometers
+
     '''
 
+    # create a copy of the zelda pupil array if needed
+    if not overwrite:
+        zelda_pupil = zelda_pupil.copy()
+    
     # ++++++++++++++++++++++++++++++++++
     # Geometrical parameters
     # ++++++++++++++++++++++++++++++++++
-    dimtab  = clear_pupil.shape[0]
+    dimtab  = clear_pupil.shape[-1]
     Rpuppix = pupil_diameter/2
     
     # ++++++++++++++++++++++++++++++++++
@@ -489,13 +498,23 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
     # ++++++++++++++++++++++++++++++++++
     pup = aperture.disc(dimtab, Rpuppix, mask=True, cpix=True, strict=True)
 
-    if zelda_pupil.ndim == 2:
-        #
-        # 2D image
-        #
+    print('ZELDA analysis')
+    nframes_clear = len(clear_pupil)
+    nframes_zelda = len(zelda_pupil)
+
+    # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
+    if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
+        raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
+    
+    for idx in range(nframes_zelda):
+        print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
 
         # normalization
-        zelda_norm = zelda_pupil / clear_pupil
+        if nframes_clear == 1:
+            zelda_norm = zelda_pupil[idx] / clear_pupil
+        else:
+            zelda_norm = zelda_pupil[idx] / clear_pupil[idx]
+        zelda_norm = zelda_norm.squeeze()
         zelda_norm[~pup] = 0
 
         # determinant calculation
@@ -509,7 +528,6 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
         neg_count  = neg_values.sum()
         ratio = neg_count / pup.sum() * 100
 
-        # warning
         if (silent is False):
             print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
@@ -534,64 +552,12 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, silent=
             print(' * min = {0:0.2f} nm'.format(opd_nm.min()))
             print(' * max = {0:0.2f} nm'.format(opd_nm.max()))
             print(' * std = {0:0.2f} nm'.format(opd_nm.std()))        
-    elif zelda_pupil.ndim == 3:
-        #
-        # 3D cube
-        #
 
-        print('ZELDA cube analysis')
-        nframes = len(zelda_pupil)
-        for idx in range(nframes):
-            print(' * frame {0} / {1}'.format(idx+1, nframes))
-            
-            # normalization
-            zelda_norm = zelda_pupil[idx] / clear_pupil
-            zelda_norm[~pup] = 0
-            
-            # determinant calculation
-            delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
-                    ((1-zelda_norm) / reference_wave) * (1-expi.real)
-            delta = delta.real
-            delta[~pup] = 0
+        # save
+        zelda_pupil[idx] = opd_nm
 
-            # check for negative values
-            neg_values = ((delta < 0) & pup)
-            neg_count  = neg_values.sum()
-            ratio = neg_count / pup.sum() * 100
-
-            # warning
-            if (silent is False):
-                print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
-
-            # too many nagative values
-            if (ratio > 1):
-                raise NameError('Too many negative values in determinant (>1%)')
-
-            # replace negative values by 0
-            delta[neg_values] = 0
-
-            # phase calculation
-            theta = (1 / (1-expi.real)) * (-expi.imag + np.sqrt(delta))
-            theta[~pup] = 0
-
-            # optical path difference in nm
-            kw = 2*np.pi / wave
-            opd_nm = (1/kw) * theta * 1e9
-
-            # statistics
-            if (silent is False):
-                print('OPD statistics:')
-                print(' * min = {0:0.2f} nm'.format(opd_nm.min()))
-                print(' * max = {0:0.2f} nm'.format(opd_nm.max()))
-                print(' * std = {0:0.2f} nm'.format(opd_nm.std()))        
-
-            # save
-            zelda_pupil[idx] = opd_nm
-
-        # variable name change
-        opd_nm = zelda_pupil
-    else:
-        raise ValueError('zelda_pupil has a wrong number of dimensions ({0})'.format(zelda_pupil.ndim))
+    # variable name change
+    opd_nm = zelda_pupil
     
     return opd_nm
 
