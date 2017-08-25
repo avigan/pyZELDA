@@ -25,22 +25,28 @@ clear_pupil, zelda_pupil, center = zelda.read_files(data_path, clear_pupil_files
 
 opd_map = zelda.analyze(clear_pupil, zelda_pupil, wave=wave)
 
+basis, coeff, opd_zern = zelda.zernike_expand(opd_map.mean(axis=0), 20)
 
-fig = plt.figure(0, figsize=(16, 5))
+fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
-ax = fig.add_subplot(131)
+ax = fig.add_subplot(141)
 ax.imshow(clear_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000)
 ax.set_title('Clear pupil')
 
-ax = fig.add_subplot(132)
+ax = fig.add_subplot(142)
 ax.imshow(zelda_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000)
 ax.set_title('ZELDA pupil')
 
-ax = fig.add_subplot(133)
-cax = ax.imshow(opd_map.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma')
+ax = fig.add_subplot(143)
+ax.imshow(opd_map.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma')
 ax.set_title('OPD map')
+
+ax = fig.add_subplot(144)
+cax = ax.imshow(opd_zern.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma')
+ax.set_title('Zernike projected OPD map')
 
 cbar = fig.colorbar(cax)
 cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
+plt.show()
