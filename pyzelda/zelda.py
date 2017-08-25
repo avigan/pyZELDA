@@ -211,7 +211,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
     return data_cube
 
 
-def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, center=(), center_method='fit',
+def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, pupil_diameter=384, center=(), center_method='fit',
                collapse_clear=False, collapse_zelda=False):
     '''
     Read a sequence of ZELDA files from disk and prepare them for analysis
@@ -230,8 +230,8 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     dark_files : str
         List of files that contains the dark data, without the .fits
     
-    dim : int, optional
-        Size of the final array. Default is 500
+    pupil_diameter : int
+        Diameter of the pupil, in pixels. Default is 384 (IRDIS)
     
     center : tuple, optional
         Specify the center of the pupil in raw data coordinations.
@@ -307,8 +307,8 @@ def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, dim=500, 
     ##############################
     # Clean and recenter images
     ##############################
-    clear_pupil = recentred_data_cubes(path, clear_pupil_files, dark, dim, center, collapse_clear)
-    zelda_pupil = recentred_data_cubes(path, zelda_pupil_files, dark, dim, center, collapse_zelda)
+    clear_pupil = recentred_data_cubes(path, clear_pupil_files, dark, pupil_diameter, center, collapse_clear)
+    zelda_pupil = recentred_data_cubes(path, zelda_pupil_files, dark, pupil_diameter, center, collapse_zelda)
     
     return clear_pupil, zelda_pupil, center
 
@@ -321,9 +321,11 @@ def refractive_index(wave, material):
     Parameters
     ----------
     
-    wave: wavelength in m
+    wave: float 
+        wavelength in m
     
-    material: name of the material
+    material: string 
+        Name of the material
     
     Returns
     -------
@@ -351,14 +353,12 @@ def refractive_index(wave, material):
     return n
 
 
-def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fused_silica'):
+def create_reference_wave(pupil_diameter, wave, material):
     '''
     Simulate the ZELDA reference wave
     
     Parameters
     ----------
-    dim : int
-        Size of the output array
     
     wave : float, optional
         Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
@@ -366,6 +366,9 @@ def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fuse
 
     pupil_diameter : int
         Diameter of the pupil, in pixels. Default is 384 (IRDIS)
+        
+    material: string 
+        Name of the material
             
     Returns
     -------
@@ -415,26 +418,20 @@ def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fuse
     m1 = 2*R_mask
 
     # defintion of the electric field in plane A in the absence of aberrations
-    ampl_PA_noaberr = aperture.disc(dim, R_pupil_pixels, cpix=True, strict=True)
+    ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
     
     # --------------------------------
     # plane B (Focal plane)
-
-    # scaling of the parameter m1 to account for the wavelength of work
-    m1bis = m1 * (dim/pupil_diameter)
   
     # calculation of the electric field in plane B with MFT within the Zernike
     # sensor mask
-    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, dim, D_mask_pixels, m1bis)
+    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, pupil_diameter, D_mask_pixels, m1)
         
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
     ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=True)
       
-    # expression of the field in the absence of aberrations without mask
-    ampl_PC0_noaberr = ampl_PA_noaberr
-  
-    # normalization term
-    norm_ampl_PC_noaberr = 1./np.max(np.abs(ampl_PC0_noaberr))
+    # normalization term using the expression of the field in the absence of aberrations without mask
+    norm_ampl_PC_noaberr = 1/np.max(np.abs(ampl_PA_noaberr))
 
     # --------------------------------
     # plane C (Relayed pupil plane)
@@ -449,13 +446,13 @@ def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fuse
     # definition of parameters for the phase estimate with Zernike
     
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, dim, m1bis) * \
-                     aperture.disc(dim, R_pupil_pixels, cpix=True, strict=True)
+    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
+                     aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
 
     return reference_wave, expi
 
 
-def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwrite=False, silent=False):
+def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, material='fused_silica', overwrite=False, silent=False):
     '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
     
     Parameters
@@ -470,8 +467,8 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
         Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
         FeII filter in SPHERE/IRDIS for which the ZELDA mask has been optimized
 
-    pupil_diameter : int
-        Diameter of the pupil, in pixels. Default is 384 (IRDIS)
+    material: string 
+        Name of the material
         
     overwrite : bool
         If set to True, the OPD maps are saved inside the zelda_pupil
@@ -508,7 +505,7 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     # ++++++++++++++++++++++++++++++++++
     # Geometrical parameters
     # ++++++++++++++++++++++++++++++++++
-    dim = clear_pupil.shape[-1]
+    pupil_diameter = clear_pupil.shape[-1]
     R_pupil_pixels = pupil_diameter/2
     
     # ++++++++++++++++++++++++++++++++++
@@ -516,13 +513,13 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
     # ++++++++++++++++++++++++++++++++++
     mask_diffraction_prop = []
     for w in wave:
-        reference_wave, expi = create_reference_wave(dim, wave=w, pupil_diameter=pupil_diameter)
+        reference_wave, expi = create_reference_wave(pupil_diameter, w, material)
         mask_diffraction_prop.append((reference_wave, expi))        
     
     # ++++++++++++++++++++++++++++++++++
     # Phase reconstruction from data
     # ++++++++++++++++++++++++++++++++++
-    pup = aperture.disc(dim, R_pupil_pixels, mask=True, cpix=True, strict=True)
+    pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=True)
 
     print('ZELDA analysis')
     nframes_clear = len(clear_pupil)
