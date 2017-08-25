@@ -600,7 +600,7 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, material='fused_silica', ov
     return opd_nm
 
 
-def opd_expand(opd, nterms=32):
+def zernike_expand(opd, nterms=32):
     '''
     Expand an OPD map into Zernike polynomials
 
@@ -624,11 +624,16 @@ def opd_expand(opd, nterms=32):
         Reconstructed OPD map using the basis and determined coefficients
     '''
     
-    NA = 384.
-    Rpuppix = NA/2
+    print('Zernike decomposition')
+    
+    if opd.ndim == 2:
+        opd = opd[np.newaxis, ...]
+    nopd = opd.shape[0]
+    
+    Rpuppix = opd.shape[-1]/2
 
     # rho, theta coordinates for the aperture
-    rho, theta = aperture.coordinates(opd.shape[0], Rpuppix, cpix=True, strict=True, outside=np.nan)
+    rho, theta = aperture.coordinates(opd.shape[-1], Rpuppix, cpix=True, strict=True, outside=np.nan)
 
     wgood = np.where(np.isfinite(rho))
     ngood = (wgood[0]).size
@@ -640,13 +645,16 @@ def opd_expand(opd, nterms=32):
     # create the Zernike polynomiales basis
     basis  = zernike.zernike_basis(nterms=nterms, rho=rho, theta=theta)
 
-    # determines the coefficients
-    coeffs = [(opd * b)[wgood].sum() / ngood for b in basis]
-
-    # reconstruct the OPD
-    reconstructed_opd = np.zeros(opd.shape, dtype=opd.dtype)
-    for z in range(nterms):
-        reconstructed_opd += coeffs[z] * basis[z, :, :]
+    coeffs = np.zeros((nopd, nterms))
+    reconstructed_opd = np.zeros_like(opd)
+    for i in range(nopd):
+        # determines the coefficients
+        coeffs_tmp = [(opd[i] * b)[wgood].sum() / ngood for b in basis]
+        coeffs[i]  = np.array(coeffs_tmp)
+        
+        # reconstruct the OPD
+        for z in range(nterms):
+            reconstructed_opd[i] += coeffs_tmp[z] * basis[z, :, :]
 
     return basis, coeffs, reconstructed_opd
 
