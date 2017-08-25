@@ -1,3 +1,6 @@
+# compatibility with python 2.7
+from __future__ import absolute_import, division, print_function
+
 import sys
 import os
 import matplotlib.pyplot as plt

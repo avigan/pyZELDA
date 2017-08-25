@@ -7,6 +7,9 @@ arthur.vigan@lam.fr
 mamadou.ndiaye@oca.eu
 '''
 
+# compatibility with python 2.7
+from __future__ import absolute_import, division, print_function
+
 import os
 import numpy as np
 
