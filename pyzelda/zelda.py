@@ -226,19 +226,19 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     return data_cube
 
 
-def refractive_index(wave, material):
+def refractive_index(wave, substrate):
     '''
-    compute the refractive index of a material at a given wavelength
-    database: https://refractiveindex.info/
+    Compute the refractive index of a subtrate at a given wavelength, 
+    using values from the refractice index database:
+    https://refractiveindex.info/
     
     Parameters
-    ----------
-    
+    ----------    
     wave: float 
         wavelength in m
     
-    material: string 
-        Name of the material
+    substrate: string 
+        Name of the substrate
     
     Returns
     -------
@@ -249,12 +249,12 @@ def refractive_index(wave, material):
     # convert wave from m to um
     wave = wave*1e6 
     
-    if material == 'fused_silica':
+    if substrate == 'fused_silica':
         params = {'B1': 0.6961663, 'B2': 0.4079426, 'B3': 0.8974794, 
                   'C1': 0.0684043, 'C2': 0.1162414, 'C3': 9.896161,
                   'wavemin': 0.21, 'wavemax': 3.71}
     else:
-        raise ValueError('Unknown material!')
+        raise ValueError('Unknown substrate {0}!'.format(substrate))
     
     if (wave > params['wavemin']) and (wave < params['wavemax']):
         n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
@@ -266,7 +266,7 @@ def refractive_index(wave, material):
     return n
 
 
-def create_reference_wave(mask_diameter, mask_depth, mask_material, pupil_diameter, Fratio, wave):
+def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diameter, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -274,13 +274,13 @@ def create_reference_wave(mask_diameter, mask_depth, mask_material, pupil_diamet
     ----------
 
     mask_diameter : float
-        ZELDA mask physical diameter, in m.
+        Mask physical diameter, in m.
     
     mask_depth : float
-        ZELDA mask physical depth, in m.
+        Mask physical depth, in m.
     
-    mask_material : str
-        ZELDA substrate material.
+    mask_substrate : str
+        Mask substrate
 
     pupil_diameter : int
         Instrument pupil diameter, in pixel.
@@ -310,7 +310,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_material, pupil_diamet
     z_m = mask_depth
 
     # substrate refractive index
-    n_substrate = refractive_index(wave, mask_material)
+    n_substrate = refractive_index(wave, mask_substrate)
 
     # R_mask: mask radius in lam0/D unit
     R_mask = 0.5*d_m / (wave * Fratio)
@@ -455,7 +455,7 @@ class Sensor():
             # mask physical parameters
             self._mask_depth = 0.8146e-6
             self._mask_diameter = 70.7e-6
-            self._mask_material = 'fused_silica'
+            self._mask_substrate = 'fused_silica'
 
             # instrument parameters
             self._pupil_diameter = 384
@@ -485,8 +485,8 @@ class Sensor():
         return self._mask_diameter
 
     @property
-    def mask_material(self):
-        return self._mask_material
+    def mask_substrate(self):
+        return self._mask_substrate
 
     @property
     def Fratio(self):
@@ -671,7 +671,7 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         mask_diffraction_prop = []
         for w in wave:
-            reference_wave, expi = create_reference_wave(self._mask_diameter, self._mask_depth, self._mask_material,
+            reference_wave, expi = create_reference_wave(self._mask_diameter, self._mask_depth, self._mask_substrate,
                                                          pupil_diameter, self._Fratio, w)
             mask_diffraction_prop.append((reference_wave, expi))
 
