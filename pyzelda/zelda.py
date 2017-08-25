@@ -52,7 +52,7 @@ def number_of_frames(path, data_files):
     return nframes_total  
 
 
-def load_data(path, data_files):
+def load_data(path, data_files, width, height, origin):
     '''
     read data from a file and check the nature of data (single frame or cube) 
 
@@ -64,6 +64,15 @@ def load_data(path, data_files):
     data_files : str
         List of files that contains the data, without the .fits
 
+    width : int
+        Width of the detector window to be extracted
+    
+    height : int
+        Height of the detector window to be extracted
+    
+    origin : tuple
+        Origin point of the detector window to be extracted in the raw files
+    
     Returns
     -------
     clear_cube : array_like
@@ -78,7 +87,7 @@ def load_data(path, data_files):
     nframes_total = number_of_frames(path, data_files)
 
     # load data
-    data_cube = np.zeros((nframes_total, 1024, 1024))
+    data_cube = np.zeros((nframes_total, height, width))
     frame_idx = 0
     for fname in data_files:
         data = fits.getdata(path+fname+'.fits')        
@@ -86,7 +95,7 @@ def load_data(path, data_files):
             data = data[np.newaxis, ...]
         
         nframes = data.shape[0]
-        data_cube[frame_idx:frame_idx+nframes] = data[:, :, 1024:]
+        data_cube[frame_idx:frame_idx+nframes] = data[:, origin[1]:origin[1]+height, origin[0]:origin[0]+width]
         frame_idx += nframes
                 
     return data_cube
@@ -143,7 +152,7 @@ def pupil_center(clear_pupil, center_method):
     return c
 
 
-def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
+def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     '''
     Read data cubes from disk and recenter them
 
@@ -166,6 +175,10 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
 
     collapse : bool
         Collapse or not the cubes
+    
+    origin : tuple
+        Origin point of the detector window to be extracted in the raw files
+    
     '''
     center = np.array(center)
     cint = center.astype(np.int)
@@ -187,7 +200,9 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
         if data.ndim == 2:
             data = data[np.newaxis, ...]
         nframes = data.shape[0]
-        data_cube[frame_idx:frame_idx+nframes] = data[:, cint[1]-cc-ext:cint[1]+cc+ext, 1024+cint[0]-cc-ext:1024+cint[0]+cc+ext]
+        data_cube[frame_idx:frame_idx+nframes] = data[:,
+                                                      origin[1]+cint[1]-cc-ext:origin[1]+cint[1]+cc+ext,
+                                                      origin[0]+cint[0]-cc-ext:origin[0]+cint[0]+cc+ext]
         frame_idx += nframes
         
         del data
@@ -209,108 +224,6 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse):
     data_cube = data_cube[:, :dim, :dim]
         
     return data_cube
-
-
-def read_files(path, clear_pupil_files, zelda_pupil_files, dark_files, pupil_diameter=384, center=(), center_method='fit',
-               collapse_clear=False, collapse_zelda=False):
-    '''
-    Read a sequence of ZELDA files from disk and prepare them for analysis
-    
-    Parameters
-    ----------
-    path : str
-        Path to the directory that contains the TIFF files
-    
-    clear_pupil_files : str
-        List of files that contains the clear pupil data, without the .fits
-    
-    zelda_pupil_files : str
-        List of files that contains the ZELDA pupil data, without the .fits
-    
-    dark_files : str
-        List of files that contains the dark data, without the .fits
-    
-    pupil_diameter : int
-        Diameter of the pupil, in pixels. Default is 384 (IRDIS)
-    
-    center : tuple, optional
-        Specify the center of the pupil in raw data coordinations.
-        Default is '()', i.e. the center will be determined by the routine
-    
-    center_method : str, optional
-        Method to be used for finding the center of the pupil:
-         - 'fit': least squares circle fit (default)
-         - 'com': center of mass
-
-    collapse_clear : bool
-        Collapse the clear pupil images. Default is False
-    
-    collapse_zelda : bool
-        Collapse the zelda pupil images. Default is False
-    
-    Returns
-    -------
-    clear_pupil : array_like
-        Array containing the collapsed clear pupil data
-    
-    zelda_pupil : array_like
-        Array containing the zelda pupil data
-    
-    c : vector_like
-        Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
-    '''
-
-    ##############################
-    # Deal with files
-    ##############################
-    
-    # read number of frames
-    nframes_clear = number_of_frames(path, clear_pupil_files)	
-    nframes_zelda = number_of_frames(path, zelda_pupil_files)	
-
-    print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
-    print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
-    
-    # make sure we have compatible data sets
-    if (nframes_zelda == 1) or collapse_zelda:
-        if nframes_clear != 1:
-            collapse_clear = True
-            print(' * automatic collapse of clear pupil to match ZELDA data')
-    else:
-        if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
-            raise ValueError('Incompatible number of frames between ZELDA and clear pupil. You could use collapse_clear=True.')
-    
-    # read dark data	
-    dark = load_data(path, dark_files)
-    dark = dark.mean(axis=0)
-
-    # read clear pupil data
-    clear_pupil = load_data(path, clear_pupil_files)
-    
-    ##############################
-    # Center determination
-    ##############################
-    
-    # collapse clear pupil image
-    clear_pupil_collapse = clear_pupil.mean(axis=0, keepdims=True)
-
-    # subtract background and correct for bad pixels
-    clear_pupil_collapse -= dark
-    clear_pupil_collapse = imutils.sigma_filter(clear_pupil_collapse.squeeze(), box=5, nsigma=3, iterate=True)
-    
-    # search for the pupil center
-    if len(center) == 0:
-        center = pupil_center(clear_pupil_collapse, center_method)
-    elif len(center) != 2:
-        raise ValueError('Error, you must pass 2 values for center')
-
-    ##############################
-    # Clean and recenter images
-    ##############################
-    clear_pupil = recentred_data_cubes(path, clear_pupil_files, dark, pupil_diameter, center, collapse_clear)
-    zelda_pupil = recentred_data_cubes(path, zelda_pupil_files, dark, pupil_diameter, center, collapse_zelda)
-    
-    return clear_pupil, zelda_pupil, center
 
 
 def refractive_index(wave, material):
@@ -353,23 +266,32 @@ def refractive_index(wave, material):
     return n
 
 
-def create_reference_wave(pupil_diameter, wave, material):
+def create_reference_wave(mask_diameter, mask_depth, mask_material, pupil_diameter, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
-    
+
     Parameters
     ----------
+
+    mask_diameter : float
+        ZELDA mask physical diameter, in m.
     
-    wave : float, optional
-        Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
-        FeII filter in SPHERE/IRDIS for which the ZELDA mask has been optimized
+    mask_depth : float
+        ZELDA mask physical depth, in m.
+    
+    mask_material : str
+        ZELDA substrate material.
 
     pupil_diameter : int
-        Diameter of the pupil, in pixels. Default is 384 (IRDIS)
-        
-    material: string 
-        Name of the material
-            
+        Instrument pupil diameter, in pixel.
+
+    Fratio : float
+        F ratio at the mask focal plane    
+
+    
+    wave : float, optional
+        Wavelength of the data, in m.
+    
     Returns
     -------
     reference_wave : array_like
@@ -378,34 +300,31 @@ def create_reference_wave(pupil_diameter, wave, material):
     expi : complex
         Phasor term associated  with the phase shift
     '''
-    
+
     # ++++++++++++++++++++++++++++++++++
     # Zernike mask parameters
     # ++++++++++++++++++++++++++++++++++
-    
-    # physical diameter and depth, in m
-    d_m = 70.7e-6
-    z_m = 0.8146e-6
-    
-    # substrate refractive index
-    n_substrate = refractive_index(wave, material)
 
-    # F ratio in coronagraphic plane
-    Fratio = 40
-    
+    # physical diameter and depth, in m
+    d_m = mask_diameter
+    z_m = mask_depth
+
+    # substrate refractive index
+    n_substrate = refractive_index(wave, mask_material)
+
     # R_mask: mask radius in lam0/D unit
     R_mask = 0.5*d_m / (wave * Fratio)
 
     # ++++++++++++++++++++++++++++++++++
     # Dimensions
     # ++++++++++++++++++++++++++++++++++
-    
+
     # mask sampling in the focal plane
     D_mask_pixels = 300
-    
+
     # entrance pupil radius
     R_pupil_pixels = pupil_diameter/2
-    
+
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
     # ++++++++++++++++++++++++++++++++++
@@ -419,185 +338,37 @@ def create_reference_wave(pupil_diameter, wave, material):
 
     # defintion of the electric field in plane A in the absence of aberrations
     ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
-    
+
     # --------------------------------
     # plane B (Focal plane)
-  
+
     # calculation of the electric field in plane B with MFT within the Zernike
     # sensor mask
     ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, pupil_diameter, D_mask_pixels, m1)
-        
+
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
     ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=True)
-      
+
     # normalization term using the expression of the field in the absence of aberrations without mask
     norm_ampl_PC_noaberr = 1/np.max(np.abs(ampl_PA_noaberr))
 
     # --------------------------------
     # plane C (Relayed pupil plane)
-  
+
     # mask phase shift phi (mask in transmission)
     phi = 2*np.pi*(n_substrate-1)*z_m/wave
-    
+
     # phasor term associated  with the phase shift
     expi = np.exp(1j*phi)
-      
+
     # --------------------------------
     # definition of parameters for the phase estimate with Zernike
-    
+
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
     reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
                      aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
 
     return reference_wave, expi
-
-
-def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, material='fused_silica', overwrite=False, silent=False):
-    '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
-    
-    Parameters
-    ----------
-    clear_pupil : array_like
-        Array containing the clear pupil data
-    
-    zelda_pupil : array_like
-        Array containing the zelda pupil data
-
-    wave : float, optional
-        Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
-        FeII filter in SPHERE/IRDIS for which the ZELDA mask has been optimized
-
-    material: string 
-        Name of the material
-        
-    overwrite : bool
-        If set to True, the OPD maps are saved inside the zelda_pupil
-        array to save memory. Otherwise, a distinct OPD array is
-        returned. Do not use if you're not a ZELDA High Master :-)
-    
-    silent : bool, optional
-        Remain silent during the data analysis
-
-    Returns
-    -------
-    opd : array_like
-        Optical path difference map in nanometers
-
-    '''
-
-    #make sure we have 3D cubes
-    if clear_pupil.ndim == 2:
-        clear_pupil = clear_pupil[np.newaxis, ...]
-
-    if zelda_pupil.ndim == 2:
-        zelda_pupil = zelda_pupil[np.newaxis, ...]
-        
-    # create a copy of the zelda pupil array if needed
-    if not overwrite:
-        zelda_pupil = zelda_pupil.copy()
-
-    # make sure wave is an array
-    if type(wave) is not list:
-        wave = [wave]
-    wave  = np.array(wave)
-    nwave = wave.size
-    
-    # ++++++++++++++++++++++++++++++++++
-    # Geometrical parameters
-    # ++++++++++++++++++++++++++++++++++
-    pupil_diameter = clear_pupil.shape[-1]
-    R_pupil_pixels = pupil_diameter/2
-    
-    # ++++++++++++++++++++++++++++++++++
-    # Reference wave(s)
-    # ++++++++++++++++++++++++++++++++++
-    mask_diffraction_prop = []
-    for w in wave:
-        reference_wave, expi = create_reference_wave(pupil_diameter, w, material)
-        mask_diffraction_prop.append((reference_wave, expi))        
-    
-    # ++++++++++++++++++++++++++++++++++
-    # Phase reconstruction from data
-    # ++++++++++++++++++++++++++++++++++
-    pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=True)
-
-    print('ZELDA analysis')
-    nframes_clear = len(clear_pupil)
-    nframes_zelda = len(zelda_pupil)
-
-    # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
-    if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
-        raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
-
-    if (nwave != 1) and (nwave != nframes_zelda):
-        raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
-    
-    for idx in range(nframes_zelda):
-        print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
-
-        # normalization
-        if nframes_clear == 1:
-            zelda_norm = zelda_pupil[idx] / clear_pupil
-        else:
-            zelda_norm = zelda_pupil[idx] / clear_pupil[idx]
-        zelda_norm = zelda_norm.squeeze()
-        zelda_norm[~pup] = 0
-
-        # mask_diffraction_prop array contains the mask diffracted properties:
-        #  - [0] reference wave
-        #  - [1] dephasing term
-        if nwave == 1:
-            cwave = wave[0]
-            reference_wave = mask_diffraction_prop[0][0]
-            expi = mask_diffraction_prop[0][1]
-        else:
-            cwave = wave[idx]
-            reference_wave = mask_diffraction_prop[idx][0]
-            expi = mask_diffraction_prop[idx][1]
-            
-        # determinant calculation
-        delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
-                ((1-zelda_norm) / reference_wave) * (1-expi.real)
-        delta = delta.real
-        delta[~pup] = 0
-
-        # check for negative values
-        neg_values = ((delta < 0) & pup)
-        neg_count  = neg_values.sum()
-        ratio = neg_count / pup.sum() * 100
-
-        if (silent is False):
-            print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
-
-        # too many nagative values
-        if (ratio > 1):
-            raise NameError('Too many negative values in determinant (>1%)')
-
-        # replace negative values by 0
-        delta[neg_values] = 0
-
-        # phase calculation
-        theta = (1 / (1-expi.real)) * (-expi.imag + np.sqrt(delta))
-        theta[~pup] = 0
-
-        # optical path difference in nm
-        kw = 2*np.pi / cwave
-        opd_nm = (1/kw) * theta * 1e9
-
-        # statistics
-        if (silent is False):
-            print('OPD statistics:')
-            print(' * min = {0:0.2f} nm'.format(opd_nm.min()))
-            print(' * max = {0:0.2f} nm'.format(opd_nm.max()))
-            print(' * std = {0:0.2f} nm'.format(opd_nm.std()))        
-
-        # save
-        zelda_pupil[idx] = opd_nm
-
-    # variable name change
-    opd_nm = zelda_pupil
-    
-    return opd_nm
 
 
 def zernike_expand(opd, nterms=32):
@@ -658,3 +429,331 @@ def zernike_expand(opd, nterms=32):
 
     return basis, coeffs, reconstructed_opd
 
+
+class Sensor():
+    '''
+    Zernike wavefront sensor class
+    '''
+
+    ##################################################
+    # Constructor
+    ##################################################
+    
+    def __init__(self, instrument):
+        '''
+        Initialization of the Sensor class
+
+        Parameters
+        ----------
+        instrument : str
+            Instrument associated with the sensor
+        '''
+
+        self._instrument = instrument
+
+        if instrument == 'SPHERE':
+            # mask physical parameters
+            self._mask_depth = 0.8146e-6
+            self._mask_diameter = 70.7e-6
+            self._mask_material = 'fused_silica'
+
+            # instrument parameters
+            self._pupil_diameter = 384
+            self._Fratio = 40
+
+            # detector sub-window parameters
+            self._width = 1024
+            self._height = 1024
+            self._origin = (1024, 0)
+        else:
+            raise ValueError('Unknown instrument {0}'.format(instrument))
+
+    ##################################################
+    # Properties
+    ##################################################
+    
+    @property
+    def instrument(self):
+        return self._instrument
+
+    @property
+    def mask_depth(self):
+        return self._mask_depth
+
+    @property
+    def mask_diameter(self):
+        return self._mask_diameter
+
+    @property
+    def mask_material(self):
+        return self._mask_material
+
+    @property
+    def Fratio(self):
+        return self._Fratio
+
+    @property
+    def pupil_diameter(self):
+        return self._pupil_diameter
+
+    @property
+    def detector_subwindow_width(self):
+        return self._width
+
+    @property
+    def detector_subwindow_height(self):
+        return self._height
+
+    @property
+    def detector_subwindow_origin(self):
+        return self._origin
+
+    ##################################################
+    # Methods
+    ##################################################
+    
+    def read_files(self, path, clear_pupil_files, zelda_pupil_files, dark_files, center=(), center_method='fit',
+                   collapse_clear=False, collapse_zelda=False):
+        '''
+        Read a sequence of ZELDA files from disk and prepare them for analysis
+
+        Parameters
+        ----------
+        path : str
+            Path to the directory that contains the TIFF files
+
+        clear_pupil_files : str
+            List of files that contains the clear pupil data, without the .fits
+
+        zelda_pupil_files : str
+            List of files that contains the ZELDA pupil data, without the .fits
+
+        dark_files : str
+            List of files that contains the dark data, without the .fits
+
+        center : tuple, optional
+            Specify the center of the pupil in raw data coordinations.
+            Default is '()', i.e. the center will be determined by the routine
+
+        center_method : str, optional
+            Method to be used for finding the center of the pupil:
+             - 'fit': least squares circle fit (default)
+             - 'com': center of mass
+
+        collapse_clear : bool
+            Collapse the clear pupil images. Default is False
+
+        collapse_zelda : bool
+            Collapse the zelda pupil images. Default is False
+
+        Returns
+        -------
+        clear_pupil : array_like
+            Array containing the collapsed clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        c : vector_like
+            Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
+        '''
+
+        ##############################
+        # Deal with files
+        ##############################
+
+        # read number of frames
+        nframes_clear = number_of_frames(path, clear_pupil_files)	
+        nframes_zelda = number_of_frames(path, zelda_pupil_files)	
+
+        print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+        print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+
+        # make sure we have compatible data sets
+        if (nframes_zelda == 1) or collapse_zelda:
+            if nframes_clear != 1:
+                collapse_clear = True
+                print(' * automatic collapse of clear pupil to match ZELDA data')
+        else:
+            if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
+                raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
+                                 'You could use collapse_clear=True.')
+
+        # read dark data	
+        dark = load_data(path, dark_files, self._width, self._height, self._origin)
+        dark = dark.mean(axis=0)
+
+        # read clear pupil data
+        clear_pupil = load_data(path, clear_pupil_files, self._width, self._height, self._origin)
+
+        ##############################
+        # Center determination
+        ##############################
+
+        # collapse clear pupil image
+        clear_pupil_collapse = clear_pupil.mean(axis=0, keepdims=True)
+
+        # subtract background and correct for bad pixels
+        clear_pupil_collapse -= dark
+        clear_pupil_collapse = imutils.sigma_filter(clear_pupil_collapse.squeeze(), box=5, nsigma=3, iterate=True)
+
+        # search for the pupil center
+        if len(center) == 0:
+            center = pupil_center(clear_pupil_collapse, center_method)
+        elif len(center) != 2:
+            raise ValueError('Error, you must pass 2 values for center')
+
+        ##############################
+        # Clean and recenter images
+        ##############################
+        clear_pupil = recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
+                                           center, collapse_clear, self._origin)
+        zelda_pupil = recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
+                                           center, collapse_zelda, self._origin)
+
+        return clear_pupil, zelda_pupil, center
+    
+
+    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False):
+        '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
+
+        Parameters
+        ----------
+        clear_pupil : array_like
+            Array containing the clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        wave : float, optional
+            Wavelength of the data, in m.
+
+        overwrite : bool
+            If set to True, the OPD maps are saved inside the zelda_pupil
+            array to save memory. Otherwise, a distinct OPD array is
+            returned. Do not use if you're not a ZELDA High Master :-)
+
+        silent : bool, optional
+            Remain silent during the data analysis
+
+        Returns
+        -------
+        opd : array_like
+            Optical path difference map in nanometers
+
+        '''
+
+        #make sure we have 3D cubes
+        if clear_pupil.ndim == 2:
+            clear_pupil = clear_pupil[np.newaxis, ...]
+
+        if zelda_pupil.ndim == 2:
+            zelda_pupil = zelda_pupil[np.newaxis, ...]
+
+        # create a copy of the zelda pupil array if needed
+        if not overwrite:
+            zelda_pupil = zelda_pupil.copy()
+
+        # make sure wave is an array
+        if type(wave) is not list:
+            wave = [wave]
+        wave  = np.array(wave)
+        nwave = wave.size
+
+        # ++++++++++++++++++++++++++++++++++
+        # Geometrical parameters
+        # ++++++++++++++++++++++++++++++++++
+        pupil_diameter = self._pupil_diameter
+        R_pupil_pixels = pupil_diameter/2
+
+        # ++++++++++++++++++++++++++++++++++
+        # Reference wave(s)
+        # ++++++++++++++++++++++++++++++++++
+        mask_diffraction_prop = []
+        for w in wave:
+            reference_wave, expi = create_reference_wave(self._mask_diameter, self._mask_depth, self._mask_material,
+                                                         pupil_diameter, self._Fratio, w)
+            mask_diffraction_prop.append((reference_wave, expi))
+
+        # ++++++++++++++++++++++++++++++++++
+        # Phase reconstruction from data
+        # ++++++++++++++++++++++++++++++++++
+        pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=True)
+
+        print('ZELDA analysis')
+        nframes_clear = len(clear_pupil)
+        nframes_zelda = len(zelda_pupil)
+
+        # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
+        if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
+            raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
+
+        if (nwave != 1) and (nwave != nframes_zelda):
+            raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
+
+        for idx in range(nframes_zelda):
+            print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
+
+            # normalization
+            if nframes_clear == 1:
+                zelda_norm = zelda_pupil[idx] / clear_pupil
+            else:
+                zelda_norm = zelda_pupil[idx] / clear_pupil[idx]
+            zelda_norm = zelda_norm.squeeze()
+            zelda_norm[~pup] = 0
+
+            # mask_diffraction_prop array contains the mask diffracted properties:
+            #  - [0] reference wave
+            #  - [1] dephasing term
+            if nwave == 1:
+                cwave = wave[0]
+                reference_wave = mask_diffraction_prop[0][0]
+                expi = mask_diffraction_prop[0][1]
+            else:
+                cwave = wave[idx]
+                reference_wave = mask_diffraction_prop[idx][0]
+                expi = mask_diffraction_prop[idx][1]
+
+            # determinant calculation
+            delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
+                    ((1-zelda_norm) / reference_wave) * (1-expi.real)
+            delta = delta.real
+            delta[~pup] = 0
+
+            # check for negative values
+            neg_values = ((delta < 0) & pup)
+            neg_count  = neg_values.sum()
+            ratio = neg_count / pup.sum() * 100
+
+            if (silent is False):
+                print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
+
+            # too many nagative values
+            if (ratio > 1):
+                raise NameError('Too many negative values in determinant (>1%)')
+
+            # replace negative values by 0
+            delta[neg_values] = 0
+
+            # phase calculation
+            theta = (1 / (1-expi.real)) * (-expi.imag + np.sqrt(delta))
+            theta[~pup] = 0
+
+            # optical path difference in nm
+            kw = 2*np.pi / cwave
+            opd_nm = (1/kw) * theta * 1e9
+
+            # statistics
+            if (silent is False):
+                print('OPD statistics:')
+                print(' * min = {0:0.2f} nm'.format(opd_nm.min()))
+                print(' * max = {0:0.2f} nm'.format(opd_nm.max()))
+                print(' * std = {0:0.2f} nm'.format(opd_nm.std()))        
+
+            # save
+            zelda_pupil[idx] = opd_nm
+
+        # variable name change
+        opd_nm = zelda_pupil
+
+        return opd_nm
