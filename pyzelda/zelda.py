@@ -361,7 +361,7 @@ def create_reference_wave(dim, wave=1.642e-6, pupil_diameter=384, material='fuse
         Size of the output array
     
     wave : float, optional
-        Wavelength of the data. Default is 1.642 micron, corresponding to the
+        Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
         FeII filter in SPHERE/IRDIS for which the ZELDA mask has been optimized
 
     pupil_diameter : int
@@ -467,7 +467,7 @@ def analyze(clear_pupil, zelda_pupil, wave=1.642e-6, pupil_diameter=384, overwri
         Array containing the zelda pupil data
 
     wave : float, optional
-        Wavelength of the data. Default is 1.642 micron, corresponding to the
+        Wavelength of the data in m. Default is 1.642e-6 m, corresponding to the
         FeII filter in SPHERE/IRDIS for which the ZELDA mask has been optimized
 
     pupil_diameter : int
