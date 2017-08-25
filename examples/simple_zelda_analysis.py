@@ -8,6 +8,8 @@ if path not in sys.path:
     sys.path.append(path)
 
 import pyzelda.zelda as zelda
+import pyzelda.ztools as ztools
+
 
 data_path = os.path.join(path, 'data/')
 
@@ -24,7 +26,7 @@ clear_pupil, zelda_pupil, center = z.read_files(data_path, clear_pupil_files, ze
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
 
-basis, coeff, opd_zern = zelda.zernike_expand(opd_map.mean(axis=0), 20)
+basis, coeff, opd_zern = ztools.zernike_expand(opd_map.mean(axis=0), 20)
 
 fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
