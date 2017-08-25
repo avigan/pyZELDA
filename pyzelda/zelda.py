@@ -7,6 +7,7 @@ mamadou.ndiaye@oca.eu
 '''
 
 import os
+import sys
 import numpy as np
 
 import pyzelda.utils.mft as mft
@@ -19,6 +20,11 @@ import poppy.zernike as zernike
 import scipy.ndimage as ndimage
 
 from astropy.io import fits
+
+if sys.version_info < (3, 0):
+    import ConfigParser
+else:
+    import configparser as ConfigParser
 
 
 class Sensor():
@@ -42,23 +48,33 @@ class Sensor():
 
         self._instrument = instrument
 
-        if instrument == 'SPHERE':
+        # read configuration file
+        package_directory = os.path.dirname(os.path.abspath(__file__))
+        configfile = os.path.join(package_directory, 'instruments', instrument+'.ini')
+        config = ConfigParser.ConfigParser()
+
+        try:
+            config.read(configfile)
+
             # mask physical parameters
-            self._mask_depth = 0.8146e-6
-            self._mask_diameter = 70.7e-6
-            self._mask_substrate = 'fused_silica'
+            self._mask_depth = float(config.get('mask', 'depth'))
+            self._mask_diameter = float(config.get('mask', 'diameter'))
+            self._mask_substrate = config.get('mask', 'substrate')
 
             # instrument parameters
-            self._pupil_diameter = 384
-            self._Fratio = 40
+            self._pupil_diameter = int(config.get('instrument', 'pupil_diameter'))
+            self._Fratio = float(config.get('instrument', 'Fratio'))
 
             # detector sub-window parameters
-            self._width = 1024
-            self._height = 1024
-            self._origin = (1024, 0)
-        else:
-            raise ValueError('Unknown instrument {0}'.format(instrument))
-
+            self._width = int(config.get('detector_crop', 'width'))
+            self._height = int(config.get('detector_crop', 'width'))
+            cx = int(config.get('detector_crop', 'origin_x'))
+            cy = int(config.get('detector_crop', 'origin_y'))
+            self._origin = (cx, cy)
+        except ConfigParser.Error as e:
+            raise ValueError('Error reading {0} configuration file: {1}'.format(instrument, e.message))
+        
+    
     ##################################################
     # Properties
     ##################################################

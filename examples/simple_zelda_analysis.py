@@ -19,7 +19,7 @@ clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE
 zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
 dark_file = 'SPHERE_BACKGROUND'
 
-z = zelda.Sensor('SPHERE')
+z = zelda.Sensor('SPHERE-IRDIS')
 
 clear_pupil, zelda_pupil, center = z.read_files(data_path, clear_pupil_files, zelda_pupil_files, dark_file,
                                                 collapse_clear=False, collapse_zelda=False)
