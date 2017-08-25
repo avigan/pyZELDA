@@ -1,11 +1,6 @@
 pyZELDA
 =======
 
-Disclaimer
-----------
-
-The module is in heavy development. Please do not use it at this time. The first official version will come soon.
-
 Introduction
 ------------
 
