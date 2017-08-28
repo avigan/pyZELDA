@@ -1,18 +1,15 @@
 # compatibility with python 2.7
 from __future__ import absolute_import, division, print_function
 
-import sys
 import os
 import matplotlib.pyplot as plt
-
-# path = '/Users/mndiaye/Dropbox/python/zelda/pyZELDA/'
-path = '/Users/avigan/Work/GitHub/pyZELDA/'
-if path not in sys.path:
-    sys.path.append(path)
 
 import pyzelda.zelda as zelda
 import pyzelda.ztools as ztools
 
+# path = '/Users/mndiaye/Dropbox/python/zelda/pyZELDA/'
+# path = '/Users/avigan/Work/GitHub/pyZELDA/'
+path = 'D:/Programmes/GitHub/pyZELDA/'
 
 data_path = os.path.join(path, 'data/')
 
@@ -54,3 +51,4 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
+
