@@ -75,7 +75,7 @@ class Sensor():
             cy = int(config.get('detector_crop', 'origin_y'))
             self._origin = (cx, cy)
         except ConfigParser.Error as e:
-            raise ValueError('Error reading {0} configuration file: {1}'.format(instrument, e.message))
+            raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
         
     
     ##################################################
