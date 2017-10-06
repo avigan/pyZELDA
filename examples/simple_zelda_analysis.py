@@ -4,6 +4,14 @@ from __future__ import absolute_import, division, print_function
 import os
 import matplotlib.pyplot as plt
 
+<<<<<<< Updated upstream
+=======
+path = '/Users/mndiaye/Dropbox/python/zelda/pyZELDA/'
+# path = '/Users/avigan/Work/GitHub/pyZELDA/'
+if path not in sys.path:
+    sys.path.append(path)
+
+>>>>>>> Stashed changes
 import pyzelda.zelda as zelda
 import pyzelda.ztools as ztools
 
