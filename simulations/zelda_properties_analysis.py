@@ -35,7 +35,6 @@ import pyzelda.utils.imutils as imutils
 import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 
-
 # definition of the color map for the colored lines
 cm0 = plt.get_cmap('rainbow')
 
@@ -75,12 +74,13 @@ radius_vec     = np.arange(pupil_diameter)/(2*R_pupil_pixels)-pupil_diameter/(2*
 # ----------------------------------------
 # number of mask cases and name
 nMask     = 3
-labelTab = ['Classical mask', 'SPHERE mask', 'SPEED mask']
+SensorLabel = ['CLASSIC', 'SPHERE-IRDIS', 'SPEED']
 
-SensorList = ['CLASSIC', 'SPHERE-IRDIS', 'SPEED']
+max_len = len(max(SensorLabel))    
+
 z_arr = []
 for i in range(nMask):
-    z_arr.append(zelda.Sensor(SensorList[i]))
+    z_arr.append(zelda.Sensor(SensorLabel[i]))
 
 # wavelength
 wave_SPH = 1.642*um
@@ -97,11 +97,11 @@ for i in range(nMask):
     theta_vec.append(z.mask_phase_shift(wave_list[i]))
 
 for i in range(nMask):
-    print('{0} mask size: {1:0.3f} lam/D'.format(SensorList[i], rel_size_vec[i]))
+    print('{0:<{1}} mask size: {2:0.3f} lam/D'.format(SensorLabel[i], max_len, rel_size_vec[i]))
 print(' ')
 
 for i in range(nMask):
-    print('{0} mask size: {1:0.3f} lam/D'.format(SensorList[i], theta_vec[i]))
+    print('{0:<{1}} mask size: {2:0.3f} lam/D'.format(SensorLabel[i], max_len, theta_vec[i]))
 print(' ')
 
 # phase error
@@ -151,18 +151,18 @@ for i in range(nMask):
 
     
 for i in range(nMask):
-    print('{0} mask: {1:0.3f} mean amplitude'.format(SensorList[i], avg_b_vec[i]))
+    print('{0:<{1}} mask: {2:0.3f} mean amplitude'.format(SensorLabel[i], max_len, avg_b_vec[i]))
 print(' ')
 
 # Mask capture range
 for i in range(nMask):
-    print('{0} mask (min range): {1:0.3f} lam'.format(SensorList[i], wave_vec[IC0_vec[i] == min(IC0_vec[i])][0]))
-    print('{0} mask (max range): {1:0.3f} lam'.format(SensorList[i], wave_vec[IC0_vec[i] == max(IC0_vec[i])][0]))
+    print('{0:<{1}} mask (min range): {2:0.3f} lam'.format(SensorLabel[i], max_len, wave_vec[IC0_vec[i] == min(IC0_vec[i])][0]))
+    print('{0:<{1}} mask (max range): {2:0.3f} lam'.format(SensorLabel[i], max_len, wave_vec[IC0_vec[i] == max(IC0_vec[i])][0]))
     print(' ')
 
 # Mask sensitivity    
 for i in range(nMask):
-    print('{0} mask sensitivity: {1:0.3f}'.format(SensorList[i], np.amax(IC0_vec[i])-np.amin(IC0_vec[i])))
+    print('{0:<{1}} mask sensitivity: {2:0.3f}'.format(SensorLabel[i], max_len, np.amax(IC0_vec[i])-np.amin(IC0_vec[i])))
 print(' ')  
 
 # ----------------------------------------
@@ -186,7 +186,7 @@ plt.yticks(np.arange(0.0, 1.1, 0.1))
 ax = fig1.add_subplot(111)
 ax.set_color_cycle([cm0(1.*i/(nMask-1)) for i in range(nMask)])
 for i in range(nMask):
-    ax.plot(radius_vec, b_vec[i], label = labelTab[i])
+    ax.plot(radius_vec, b_vec[i], label = '{0:<{1}} mask'.format(SensorLabel[i], max_len))
 ax.plot(radius_vec, P_vec, 'k--')
 ax.set_xlim([-0.55, 0.55])
 ax.set_ylim([-0.05, 1.05])
@@ -215,7 +215,7 @@ plt.yticks(np.arange(0.0, 4.1, 1.0))
 ax = fig2.add_subplot(111)
 ax.set_color_cycle([cm0(1.*i/(nMask-1)) for i in range(nMask)])
 for i in range(nMask):
-    ax.plot(wave_vec, IC0_vec[i], label = labelTab[i])
+    ax.plot(wave_vec, IC0_vec[i], label = '{0:<{1}} mask'.format(SensorLabel[i], max_len))
 ax.set_xlim([-0.25, 0.45])
 ax.set_ylim([-0.25, 3.75])
 ax.xaxis.set_minor_locator(AutoMinorLocator(2))
@@ -240,5 +240,3 @@ plt.tight_layout()
 if do_plot:
     fig2.savefig('/Users/mndiaye/Dropbox/OCA/projects/Speed/ZELDA-SPEED/plots/\
 normalized_intensity_exit_pupil.pdf')
-
-  
