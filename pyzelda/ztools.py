@@ -225,7 +225,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     return data_cube
 
 
-def refractive_index(wave, substrate):
+def refractive_index(wave, substrate, T=293):
     '''
     Compute the refractive index of a subtrate at a given wavelength, 
     using values from the refractice index database:
@@ -252,16 +252,28 @@ def refractive_index(wave, substrate):
         params = {'B1': 0.6961663, 'B2': 0.4079426, 'B3': 0.8974794, 
                   'C1': 0.0684043, 'C2': 0.1162414, 'C3': 9.896161,
                   'wavemin': 0.21, 'wavemax': 3.71}
-    else:
-        raise ValueError('Unknown substrate {0}!'.format(substrate))
-    
-    if (wave > params['wavemin']) and (wave < params['wavemax']):
-        n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
+        if (wave > params['wavemin']) and (wave < params['wavemax']):
+            n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
                 params['B2']*wave**2/(wave**2-params['C2']**2) +
                 params['B3']*wave**2/(wave**2-params['C3']**2))
+        else:
+            raise ValueError('Wavelength is out of range for the refractive index')
+                  
+    elif substrate == 'germanium':
+    # from H. H. Li et al. 1980, value at T < 293K
+        params = {'A0': 2.5381, 'A1': 1.8260e-3, 'A2': 2.8888e-6,
+                  'wave0': 0.168, 'wavemin': 1.9, 'wavemax': 18.0}
+        if (wave > params['wavemin']) and (wave < params['wavemax'] and (T <= 293)):
+            eps = 15.2892 + 1.4549e-3*T + 3.5078e-6*T**2 -1.2071e-9*T**3
+            dLoverL = -0.089 + 2.626e-6*(T-100)+1.463e-8*(T-100)**2-2.221e-11*(T-100)**3
+            L = np.exp(-3.*dLoverL)
+            n = np.sqrt(eps + (L/wave**2)*(params['A0']+params['A1']*T+params['A2']*T**2))     
+        else:
+            raise ValueError('Wavelength or Temperature is out of range for the refractive index')
+                
     else:
-        raise ValueError('Wavelength is out of range for the refractive index')
-        
+        raise ValueError('Unknown substrate {0}!'.format(substrate))
+ 
     return n
 
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, pupil_diameter, R_pupil_pixels, Fratio, wave):
