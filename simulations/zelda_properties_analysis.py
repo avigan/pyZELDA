@@ -63,92 +63,45 @@ um = 1e-6
 nm = 1e-9
 
 # ----------------------------------------
+# simulation parameters
+# ----------------------------------------
+# sampling parameters for simulation 
+pupil_diameter = 500
+R_pupil_pixels = 150
+radius_vec     = np.arange(pupil_diameter)/(2*R_pupil_pixels)-pupil_diameter/(2*2*R_pupil_pixels)
+
+# ----------------------------------------
 # Mask characteristics for Classical one (CLA), VLT/SPHERE (SPH), and SPEED (SPD) 
 # ----------------------------------------
 # number of mask cases and name
 nMask     = 3
 labelTab = ['Classical mask', 'SPHERE mask', 'SPEED mask']
 
-z_CLA = zelda.Sensor('CLASSIC')
-z_SPH = zelda.Sensor('SPHERE-IRDIS')
-z_SPD = zelda.Sensor('SPEED')
+SensorList = ['CLASSIC', 'SPHERE-IRDIS', 'SPEED']
+z_arr = []
+for i in range(nMask):
+    z_arr.append(zelda.Sensor(SensorList[i]))
 
 # wavelength
 wave_SPH = 1.642*um
 wave_SPD = 633*nm
 wave_CLA = copy.deepcopy(wave_SPD) 
+wave_list = [wave_CLA, wave_SPH, wave_SPD]
 
-# relative size of the mask in lam0/D
-a_CLA = z_CLA.mask_relative_size(wave_CLA)
-a_SPH = z_SPH.mask_relative_size(wave_SPH)
-a_SPD = z_SPD.mask_relative_size(wave_SPD)
+# relative size and phase shift at lam of the mask in lam0/D and radians
+rel_size_vec = []
+theta_vec    = []
+for i in range(nMask):
+    z = z_arr[i]
+    rel_size_vec.append(z.mask_relative_size(wave_list[i]))
+    theta_vec.append(z.mask_phase_shift(wave_list[i]))
 
-print('classical mask size: {0:0.3f} lam/D'.format(a_CLA))
-print('SPHERE    mask size: {0:0.3f} lam/D'.format(a_SPH))
-print('SPEED     mask size: {0:0.3f} lam/D'.format(a_SPD))
+for i in range(nMask):
+    print('{0} mask size: {1:0.3f} lam/D'.format(SensorList[i], rel_size_vec[i]))
 print(' ')
 
-# phase shift introduced by the prototype at lam0
-theta_CLA = z_CLA.mask_phase_shift(wave_CLA)
-theta_SPH = z_SPH.mask_phase_shift(wave_SPH)
-theta_SPD = z_SPD.mask_phase_shift(wave_SPD)
-
-print('classical mask: {0:0.3f} pi phase shift'.format(theta_CLA/np.pi))
-print('SPHERE    mask: {0:0.3f} pi phase shift'.format(theta_SPH/np.pi))
-print('SPEED     mask: {0:0.3f} pi phase shift'.format(theta_SPD/np.pi))
-print(' ')
-
-# sampling parameters for simulation 
-pupil_diameter = 500
-R_pupil_pixels = 150
-
-
-radius_vec     = np.arange(pupil_diameter)/(2*R_pupil_pixels)-pupil_diameter/(2*2*R_pupil_pixels)
-
-# pupil plane amplitude
-pup = np.real(aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True))
-
-# Reference wave
-reference_wave_CLA, expi_CLA = ztools.create_reference_wave_beyond_pupil(z_CLA.mask_diameter, 
-                                                                z_CLA.mask_depth,
-                                                                z_CLA.mask_substrate,
-                                                                pupil_diameter, 
-                                                                R_pupil_pixels, z_CLA.Fratio, wave_CLA)                                                                
-                                                               
-reference_wave_SPH, expi_SPH = ztools.create_reference_wave_beyond_pupil(z_SPH.mask_diameter, 
-                                                                z_SPH.mask_depth,
-                                                                z_SPH.mask_substrate,
-                                                                pupil_diameter, 
-                                                                R_pupil_pixels, z_SPH.Fratio, wave_SPH)
-
-reference_wave_SPD, expi_SPD = ztools.create_reference_wave_beyond_pupil(z_SPD.mask_diameter, 
-                                                                z_SPD.mask_depth,
-                                                                z_SPD.mask_substrate,
-                                                                pupil_diameter, 
-                                                                R_pupil_pixels, z_SPD.Fratio, wave_SPD)
-
-# mask diffracted wave amplitude
-b_CLA = np.real(reference_wave_CLA)
-b_SPH = np.real(reference_wave_SPH)
-b_SPD = np.real(reference_wave_SPD)
-
-# radial profile of the pupil plane amplitude
-P_vec    = pup[pupil_diameter//2]
-
-# radial profile of the mask diffracted wave amplitude
-b_vec = np.zeros((nMask, pupil_diameter))
-b_vec[0] = b_CLA[pupil_diameter//2]
-b_vec[1] = b_SPH[pupil_diameter//2]
-b_vec[2] = b_SPD[pupil_diameter//2]
-
-# Averaged intensity of a given pixel as a function of b
-avg_b_CLA = np.mean(b_CLA[pup != 0.])
-avg_b_SPH = np.mean(b_SPH[pup != 0.])
-avg_b_SPD = np.mean(b_SPD[pup != 0.])
-
-print('classical mask: {0:0.3f} mean amplitude'.format(avg_b_CLA))
-print('SPHERE    mask: {0:0.3f} mean amplitude'.format(avg_b_SPH))
-print('SPEED     mask: {0:0.3f} mean amplitude'.format(avg_b_SPD))
+for i in range(nMask):
+    print('{0} mask size: {1:0.3f} lam/D'.format(SensorList[i], theta_vec[i]))
 print(' ')
 
 # phase error
@@ -157,30 +110,59 @@ phi_vec  = (1.2*2*np.pi/npts)*(np.arange(npts)-npts//2)
 wave_vec = phi_vec[:]/(2.*np.pi)
 
 # nm wavefront error array
-nm_vec_CLA   = wave_CLA*1e9*phi_vec/(2.*np.pi)
-nm_vec_SPH   = wave_SPH*1e9*phi_vec/(2.*np.pi)
-nm_vec_SPD   = wave_SPD*1e9*phi_vec/(2.*np.pi)
+nm_vec       = []
+for i in range(nMask):
+    nm_vec.append(wave_list[i]*1e9*phi_vec/(2.*np.pi))
 
-# Intensity versus pupil plane pixel
-## Sinudoid expression
-IC0_CLA, IC1_CLA, IC2_CLA = ztools.zelda_analytical_intensity(phi_vec, b=avg_b_CLA, theta=theta_CLA)
-IC0_SPH, IC1_SPH, IC2_SPH = ztools.zelda_analytical_intensity(phi_vec, b=avg_b_SPH, theta=theta_SPH)
-IC0_SPD, IC1_SPD, IC2_SPD = ztools.zelda_analytical_intensity(phi_vec, b=avg_b_SPD, theta=theta_SPD)
 
-IC0_vec    = np.zeros((nMask, npts))
-IC0_vec[0] = IC0_CLA
-IC0_vec[1] = IC0_SPH
-IC0_vec[2] = IC0_SPD
+# pupil plane amplitude
+pup = np.real(aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True))
+
+# radial profile of the pupil plane amplitude
+P_vec    = pup[pupil_diameter//2]
+
+# Reference wave
+reference_wave_vec = []
+expi_vec           = []
+b_arr_vec          = []
+b_vec              = []
+avg_b_vec          = []
+IC0_vec            = []
+IC1_vec            = []
+IC2_vec            = []
+for i in range(nMask):
+    z = z_arr[i]
+    reference_wave, expi = ztools.create_reference_wave_beyond_pupil(z.mask_diameter, 
+                                                                z.mask_depth,
+                                                                z.mask_substrate,
+                                                                pupil_diameter, 
+                                                                R_pupil_pixels, z.Fratio, 
+                                                                wave_list[i])
+    reference_wave_vec.append(reference_wave)
+    expi_vec.append(expi)
+    tmp = np.real(reference_wave)
+    b_arr_vec.append(tmp)
+    b_vec.append(tmp[pupil_diameter//2])                                                                
+    avg_b_vec.append(np.mean(tmp[pup != 0.]))
+    IC0, IC1, IC2 = ztools.zelda_analytical_intensity(phi_vec, b=avg_b_vec[i], theta=theta_vec[i])
+    IC0_vec.append(IC0)
+    IC1_vec.append(IC2) 
+    IC2_vec.append(IC2)  
+
+    
+for i in range(nMask):
+    print('{0} mask: {1:0.3f} mean amplitude'.format(SensorList[i], avg_b_vec[i]))
+print(' ')
 
 # Mask capture range
-for i in range(3):
-    print('mask (min range): {0:0.3f} lam'.format(wave_vec[IC0_vec[i] == min(IC0_vec[i])][0]))
-    print('mask (max range): {0:0.3f} lam'.format(wave_vec[IC0_vec[i] == max(IC0_vec[i])][0]))
+for i in range(nMask):
+    print('{0} mask (min range): {1:0.3f} lam'.format(SensorList[i], wave_vec[IC0_vec[i] == min(IC0_vec[i])][0]))
+    print('{0} mask (max range): {1:0.3f} lam'.format(SensorList[i], wave_vec[IC0_vec[i] == max(IC0_vec[i])][0]))
     print(' ')
 
 # Mask sensitivity    
-for i in range(3):
-    print('mask sensitivity: {0:0.3f}'.format(np.amax(IC0_vec[i])-np.amin(IC0_vec[i])))
+for i in range(nMask):
+    print('{0} mask sensitivity: {1:0.3f}'.format(SensorList[i], np.amax(IC0_vec[i])-np.amin(IC0_vec[i])))
 print(' ')  
 
 # ----------------------------------------
