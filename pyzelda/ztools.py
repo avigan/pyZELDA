@@ -356,11 +356,11 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # --------------------------------
     # plane C (Relayed pupil plane)
 
-    # mask phase shift phi (mask in transmission)
-    phi = 2*np.pi*(n_substrate-1)*z_m/wave
+    # mask phase shift theta (mask in transmission)
+    theta = 2*np.pi*(n_substrate-1)*z_m/wave
 
     # phasor term associated  with the phase shift
-    expi = np.exp(1j*phi)
+    expi = np.exp(1j*theta)
 
     # --------------------------------
     # definition of parameters for the phase estimate with Zernike
@@ -477,3 +477,53 @@ def zernike_expand(opd, nterms=32):
             reconstructed_opd[i] += coeffs_tmp[z] * basis[z, :, :]
 
     return basis, coeffs, reconstructed_opd
+
+def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
+    '''
+    Compute the analytical expression of the zelda signal
+    for a given value of b
+    
+    Parameters
+    ----------
+        
+    b: float
+        value of the mask diffracted wave at a given pixel
+
+    theta: float
+        value of the phase delay of the mask in rad
+    
+    phi: vector_like
+        array with the phase error in rad
+    
+    Returns
+    -------
+    IC0: vector_like
+        array with the analytical expression of the zelda signal
+    
+    IC1: vector_like
+        array with the expression of the zelda signal with Taylor expansion to the 1st order
+    
+    IC2: vector_like
+        array with the expression of the zelda signal with Taylor expansion to the 2nd order
+     
+    '''
+
+    npts = phi.size
+
+    ## intensity with sinusoid, linear, and quadratic expressions
+    IC0 = np.zeros((npts))
+    IC1 = np.zeros((npts))
+    IC2 = np.zeros((npts))
+
+    ## Normalized entrance pupil plane amplitude
+    P = 1.0
+    ## Sinudoid intensity expression    
+    IC0 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(np.sin(phi)*np.sin(theta)-np.cos(phi)*(1.-np.cos(theta))) 
+    ## Linear intensity expression
+    IC1 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-np.cos(theta)))
+    ## Quadratic intensity expression
+    IC2 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-0.5*phi**2)*(1.-np.cos(theta)))
+
+    return IC0, IC1, IC2
+
+
