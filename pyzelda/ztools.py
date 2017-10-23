@@ -239,6 +239,9 @@ def refractive_index(wave, substrate, T=293):
     substrate: string 
         Name of the substrate
     
+    temperature: float
+        temperature in K
+    
     Returns
     -------
     
@@ -261,13 +264,34 @@ def refractive_index(wave, substrate, T=293):
                   
     elif substrate == 'germanium':
     # from H. H. Li et al. 1980, value at T < 293K
-        params = {'A0': 2.5381, 'A1': 1.8260e-3, 'A2': 2.8888e-6,
-                  'wave0': 0.168, 'wavemin': 1.9, 'wavemax': 18.0}
-        if (wave > params['wavemin']) and (wave < params['wavemax'] and (T <= 293)):
-            eps = 15.2892 + 1.4549e-3*T + 3.5078e-6*T**2 -1.2071e-9*T**3
-            dLoverL = -0.089 + 2.626e-6*(T-100)+1.463e-8*(T-100)**2-2.221e-11*(T-100)**3
-            L = np.exp(-3.*dLoverL)
-            n = np.sqrt(eps + (L/wave**2)*(params['A0']+params['A1']*T+params['A2']*T**2))     
+    #    params = {'A0': 2.5381, 'A1': 1.8260e-3, 'A2': 2.8888e-6,
+    #              'wave0': 0.168, 'wavemin': 1.9, 'wavemax': 18.0}
+    #    if (wave > params['wavemin']) and (wave < params['wavemax'] and (T>=100) and (T <= 1200)):
+    #        eps = 15.2892 +1.4549e-3*T +3.5078e-6*T**2 -1.2071e-9*T**3
+    #        if (T>=100) and (T < 293):
+    #            dLoverL = 2.626e-6*(T-100) +1.463e-8*(T-100)**2 -2.221e-11*(T-100)**3
+    #            #dLoverL = -0.089 +2.626e-6*(T-100) +1.463e-8*(T-100)**2 -2.221e-11*(T-100)**3
+    #        else:
+    #            dLoverL = 5.790e-6*(T-293) +1.768e-9*(T-293)**2 -4.562e-13*(T-293)**3
+    #        L = np.exp(-3.*dLoverL)
+    #        n = np.sqrt(eps + (L/wave**2)*(params['A0'] +params['A1']*T +params['A2']*T**2))
+    #        print('refractive index of Germanium from Li et al. (1980): to be checked')
+        # from Barnes & Piltch (1979)
+        params = {'A1': -6.040e-3, 'A0': 11.05128, 
+                  'B1': 9.295e-3 , 'B0': 4.00536,
+                  'C1': -5.392e-4, 'C0': 0.599034, 
+                  'D1': 4.151e-4 , 'D0': 0.09145,
+                  'E1': 1.51408  , 'E0': 3426.5,
+                  'wavemin': 2.5, 'wavemax': 14, 'Tmin': 50, 'Tmax': 300}
+        if (wave >= params['wavemin']) and (wave <= params['wavemax'] and (T>=params['Tmin']) and (T <= params['Tmax'])):
+            A = params['A1']*T + params['A0']
+            B = params['B1']*T + params['B0']
+            C = params['C1']*T + params['C0']
+            D = params['D1']*T + params['D0']
+            E = params['E1']*T + params['E0']
+            #print('{0}, {1}, {2}, {3}, {4}'.format(A, B, C, D, E))
+            n = np.sqrt(A + B*wave**2/(wave**2-C)+ D*wave**2/(wave**2-E))
+            print('refractive index of Germanium from Barnes & Piltch (1979): to be checked')         
         else:
             raise ValueError('Wavelength or Temperature is out of range for the refractive index')
                 
