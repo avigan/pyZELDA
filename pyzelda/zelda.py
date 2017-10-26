@@ -368,3 +368,40 @@ class Sensor():
         opd_nm = zelda_pupil
 
         return opd_nm
+
+    def mask_phase_shift(self, wave):
+        '''
+        compute the phase delay introduced by the mask at a given wavelength
+        
+        Parameters
+        ----------
+        wave: float
+            wavelength of work, in m
+              
+        Return
+        ------
+        phase_shift: float
+            the mask phase delay, in radians
+        
+        '''
+        mask_refractive_index = ztools.refractive_index(wave, self.mask_substrate)
+        phase_shift           = 2.*np.pi*(mask_refractive_index-1)*self.mask_depth/wave    
+        return phase_shift
+        
+    def mask_relative_size(self, wave):
+        '''
+        compute the relative size of the phase mask in resolution element at wave
+        
+        Parameters
+        ----------
+        wave: float
+            wavelength of work, in m
+            
+        Return
+        ------
+        mask_rel_size: float
+            the mask relative size in lam/D
+        
+        '''
+        mask_rel_size = self.mask_diameter/(wave*self.Fratio)
+        return mask_rel_size
