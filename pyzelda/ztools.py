@@ -225,7 +225,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     return data_cube
 
 
-def refractive_index(wave, substrate):
+def refractive_index(wave, substrate, T=293):
     '''
     Compute the refractive index of a subtrate at a given wavelength, 
     using values from the refractice index database:
@@ -238,6 +238,9 @@ def refractive_index(wave, substrate):
     
     substrate: string 
         Name of the substrate
+    
+    temperature: float
+        temperature in K
     
     Returns
     -------
@@ -252,20 +255,52 @@ def refractive_index(wave, substrate):
         params = {'B1': 0.6961663, 'B2': 0.4079426, 'B3': 0.8974794, 
                   'C1': 0.0684043, 'C2': 0.1162414, 'C3': 9.896161,
                   'wavemin': 0.21, 'wavemax': 3.71}
-    else:
-        raise ValueError('Unknown substrate {0}!'.format(substrate))
-    
-    if (wave > params['wavemin']) and (wave < params['wavemax']):
-        n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
+        if (wave > params['wavemin']) and (wave < params['wavemax']):
+            n = np.sqrt(1 + params['B1']*wave**2/(wave**2-params['C1']**2) +
                 params['B2']*wave**2/(wave**2-params['C2']**2) +
                 params['B3']*wave**2/(wave**2-params['C3']**2))
+        else:
+            raise ValueError('Wavelength is out of range for the refractive index')
+                  
+    elif substrate == 'germanium':
+    # from H. H. Li et al. 1980, value at T < 293K
+    #    params = {'A0': 2.5381, 'A1': 1.8260e-3, 'A2': 2.8888e-6,
+    #              'wave0': 0.168, 'wavemin': 1.9, 'wavemax': 18.0}
+    #    if (wave > params['wavemin']) and (wave < params['wavemax'] and (T>=100) and (T <= 1200)):
+    #        eps = 15.2892 +1.4549e-3*T +3.5078e-6*T**2 -1.2071e-9*T**3
+    #        if (T>=100) and (T < 293):
+    #            dLoverL = 2.626e-6*(T-100) +1.463e-8*(T-100)**2 -2.221e-11*(T-100)**3
+    #            #dLoverL = -0.089 +2.626e-6*(T-100) +1.463e-8*(T-100)**2 -2.221e-11*(T-100)**3
+    #        else:
+    #            dLoverL = 5.790e-6*(T-293) +1.768e-9*(T-293)**2 -4.562e-13*(T-293)**3
+    #        L = np.exp(-3.*dLoverL)
+    #        n = np.sqrt(eps + (L/wave**2)*(params['A0'] +params['A1']*T +params['A2']*T**2))
+    #        print('refractive index of Germanium from Li et al. (1980): to be checked')
+        # from Barnes & Piltch (1979)
+        params = {'A1': -6.040e-3, 'A0': 11.05128, 
+                  'B1': 9.295e-3 , 'B0': 4.00536,
+                  'C1': -5.392e-4, 'C0': 0.599034, 
+                  'D1': 4.151e-4 , 'D0': 0.09145,
+                  'E1': 1.51408  , 'E0': 3426.5,
+                  'wavemin': 2.5, 'wavemax': 14, 'Tmin': 50, 'Tmax': 300}
+        if (wave >= params['wavemin']) and (wave <= params['wavemax'] and (T>=params['Tmin']) and (T <= params['Tmax'])):
+            A = params['A1']*T + params['A0']
+            B = params['B1']*T + params['B0']
+            C = params['C1']*T + params['C0']
+            D = params['D1']*T + params['D0']
+            E = params['E1']*T + params['E0']
+            #print('{0}, {1}, {2}, {3}, {4}'.format(A, B, C, D, E))
+            n = np.sqrt(A + B*wave**2/(wave**2-C)+ D*wave**2/(wave**2-E))
+            print('refractive index of Germanium from Barnes & Piltch (1979): to be checked')         
+        else:
+            raise ValueError('Wavelength or Temperature is out of range for the refractive index')
+                
     else:
-        raise ValueError('Wavelength is out of range for the refractive index')
-        
+        raise ValueError('Unknown substrate {0}!'.format(substrate))
+ 
     return n
 
-
-def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diameter, Fratio, wave):
+def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, pupil_diameter, R_pupil_pixels, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -282,7 +317,10 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
         Mask substrate
 
     pupil_diameter : int
-        Instrument pupil diameter, in pixel.
+        Array size (can be larger than the pupil diameter).
+        
+    R_pupil_pixels : int
+        Instrument pupil radius, in pixel
 
     Fratio : float
         F ratio at the mask focal plane    
@@ -322,7 +360,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
     D_mask_pixels = 300
 
     # entrance pupil radius
-    R_pupil_pixels = pupil_diameter/2
+    #R_pupil_pixels = pupil_diameter/2
 
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -333,7 +371,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
 
     # definition of m1 parameter for the Matrix Fourier Transform (MFT)
     # here equal to the mask size
-    m1 = 2*R_mask
+    m1 = 2*R_mask*(pupil_diameter/(2.*R_pupil_pixels))
 
     # defintion of the electric field in plane A in the absence of aberrations
     ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
@@ -354,20 +392,68 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
     # --------------------------------
     # plane C (Relayed pupil plane)
 
-    # mask phase shift phi (mask in transmission)
-    phi = 2*np.pi*(n_substrate-1)*z_m/wave
+    # mask phase shift theta (mask in transmission)
+    theta = 2*np.pi*(n_substrate-1)*z_m/wave
 
     # phasor term associated  with the phase shift
-    expi = np.exp(1j*phi)
+    expi = np.exp(1j*theta)
 
     # --------------------------------
     # definition of parameters for the phase estimate with Zernike
 
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
-                     aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
+    #reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
+    #                 aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
+
+    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) 
 
     return reference_wave, expi
+
+
+
+def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diameter, Fratio, wave):
+    '''
+    Simulate the ZELDA reference wave
+
+    Parameters
+    ----------
+
+    mask_diameter : float
+        Mask physical diameter, in m.
+    
+    mask_depth : float
+        Mask physical depth, in m.
+    
+    mask_substrate : str
+        Mask substrate
+
+    pupil_diameter : int
+        Instrument pupil diameter, in pixel.
+
+    Fratio : float
+        F ratio at the mask focal plane    
+
+    
+    wave : float, optional
+        Wavelength of the data, in m.
+    
+    Returns
+    -------
+    reference_wave : array_like
+        Reference wave as a complex array
+
+    expi : complex
+        Phasor term associated  with the phase shift
+    '''
+
+    # entrance pupil radius
+    R_pupil_pixels = pupil_diameter//2
+
+    reference_wave, expi = create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, \
+    pupil_diameter, R_pupil_pixels, Fratio, wave)
+    
+    return reference_wave* \
+                     aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True), expi    
 
 
 def zernike_expand(opd, nterms=32):
@@ -427,3 +513,53 @@ def zernike_expand(opd, nterms=32):
             reconstructed_opd[i] += coeffs_tmp[z] * basis[z, :, :]
 
     return basis, coeffs, reconstructed_opd
+
+def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
+    '''
+    Compute the analytical expression of the zelda signal
+    for a given value of b
+    
+    Parameters
+    ----------
+        
+    b: float
+        value of the mask diffracted wave at a given pixel
+
+    theta: float
+        value of the phase delay of the mask in rad
+    
+    phi: vector_like
+        array with the phase error in rad
+    
+    Returns
+    -------
+    IC0: vector_like
+        array with the analytical expression of the zelda signal
+    
+    IC1: vector_like
+        array with the expression of the zelda signal with Taylor expansion to the 1st order
+    
+    IC2: vector_like
+        array with the expression of the zelda signal with Taylor expansion to the 2nd order
+     
+    '''
+
+    npts = phi.size
+
+    ## intensity with sinusoid, linear, and quadratic expressions
+    IC0 = np.zeros((npts))
+    IC1 = np.zeros((npts))
+    IC2 = np.zeros((npts))
+
+    ## Normalized entrance pupil plane amplitude
+    P = 1.0
+    ## Sinudoid intensity expression    
+    IC0 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(np.sin(phi)*np.sin(theta)-np.cos(phi)*(1.-np.cos(theta))) 
+    ## Linear intensity expression
+    IC1 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-np.cos(theta)))
+    ## Quadratic intensity expression
+    IC2 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-0.5*phi**2)*(1.-np.cos(theta)))
+
+    return IC0, IC1, IC2
+
+
