@@ -300,6 +300,7 @@ def refractive_index(wave, substrate, T=293):
  
     return n
 
+
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, pupil_diameter, R_pupil_pixels, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
@@ -374,7 +375,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     m1 = 2*R_mask*(pupil_diameter/(2.*R_pupil_pixels))
 
     # defintion of the electric field in plane A in the absence of aberrations
-    ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
+    ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
 
     # --------------------------------
     # plane B (Focal plane)
@@ -384,7 +385,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, pupil_diameter, D_mask_pixels, m1)
 
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
-    ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=True)
+    ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
 
     # normalization term using the expression of the field in the absence of aberrations without mask
     norm_ampl_PC_noaberr = 1/np.max(np.abs(ampl_PA_noaberr))
@@ -403,7 +404,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
     #reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
-    #                 aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True)
+    #                 aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
 
     reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) 
 
@@ -449,11 +450,11 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
     # entrance pupil radius
     R_pupil_pixels = pupil_diameter//2
 
-    reference_wave, expi = create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, \
-    pupil_diameter, R_pupil_pixels, Fratio, wave)
+    reference_wave, expi = create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, 
+                                                              pupil_diameter, R_pupil_pixels, Fratio, wave)
     
-    return reference_wave* \
-                     aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True), expi    
+    return reference_wave * \
+                     aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False), expi    
 
 
 def zernike_expand(opd, nterms=32):
@@ -489,7 +490,7 @@ def zernike_expand(opd, nterms=32):
     Rpuppix = opd.shape[-1]/2
 
     # rho, theta coordinates for the aperture
-    rho, theta = aperture.coordinates(opd.shape[-1], Rpuppix, cpix=True, strict=True, outside=np.nan)
+    rho, theta = aperture.coordinates(opd.shape[-1], Rpuppix, cpix=True, strict=False, outside=np.nan)
 
     wgood = np.where(np.isfinite(rho))
     ngood = (wgood[0]).size
