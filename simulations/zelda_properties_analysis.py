@@ -116,7 +116,7 @@ for i in range(nMask):
 
 
 # pupil plane amplitude
-pup = np.real(aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=True))
+pup = np.real(aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False))
 
 # radial profile of the pupil plane amplitude
 P_vec    = pup[pupil_diameter//2]

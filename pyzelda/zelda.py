@@ -289,7 +289,7 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
         # ++++++++++++++++++++++++++++++++++
-        pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=True)
+        pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=False)
 
         print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
