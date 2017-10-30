@@ -210,6 +210,42 @@ def disc(dim, size, diameter=False, strict=False, center=(), cpix=False, invert=
     return d
 
 
+def sphere_pupil_internal(dim, diameter, dead_actuator_diameter=0.025):
+    '''
+    SPHERE internal pupil with dead actuators mask
+
+    Parameters
+    ----------
+    dim : int
+        Size of the output array
+    
+    diameter : int
+        Diameter the disk
+
+    dead_actuator_diameter : float
+        Size of the dead actuators mask, in fraction of the pupil diameter
+
+    Returns
+    -------
+    pup : array
+        An array containing a disc with the specified parameters
+    '''
+    pup = disc_obstructed(dim, diameter, 0.14, diameter=True, strict=False, cpix=True)
+
+    # dead actuators    
+    xarr = np.array([ 0.1534,  -0.0984, -0.1963,  0.2766,  0.3297])
+    yarr = np.array([-0.0768,  -0.1240, -0.3542, -0.2799, -0.2799])
+    for i in range(len(xarr)):
+        cx = xarr[i] * diameter + diameter/2
+        cy = yarr[i] * diameter + diameter/2
+        
+        dead = disc(dim, dead_actuator_diameter*diameter, center=(cx, cy), invert=True)
+
+        pup *= dead
+
+    return pup
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -221,4 +257,8 @@ if __name__ == "__main__":
     
     r, t = coordinates(dim, diam, cpix=False, strict=False, center=(100, 111))
 
+    plt.clf()
     plt.imshow(d1)
+
+    # plt.clf()
+    # plt.imshow(sphere_pupil_internal(384, 384))
