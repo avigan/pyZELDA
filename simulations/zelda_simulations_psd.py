@@ -31,7 +31,7 @@ psd_2d_fft, psd_1d_fft, rad_cpup_fft = ztools.compute_psd(opd, mask=mask)
 integral_psd_fft = np.sum(psd_2d_fft)
 
 
-psd_2d_mft, psd_1d_mft, rad_cpup_mft = ztools.compute_psd(opd, mask=mask, freq_max=40.)
+psd_2d_mft, psd_1d_mft, rad_cpup_mft = ztools.compute_psd(opd, mask=mask, freq_cutoff=150.)
 integral_psd_mft = np.sum(psd_2d_mft)
 
 print('var dev: {0}'.format(np.var(opd[mask])))
@@ -54,18 +54,31 @@ freq1 = 4.
 freq2 = 20.
 freq3 = 384
 Dpup  = 384
+freq_cutoff = 150.
 
+sigma1_fft = ztools.integrate_psd(psd_2d_fft, Dpup/2, freq0, freq1)
+sigma2_fft = ztools.integrate_psd(psd_2d_fft, Dpup/2, freq1, freq2)
+sigma3_fft = ztools.integrate_psd(psd_2d_fft, Dpup/2, freq2, freq3)
+print('sigma1 fft: {0:2f}'.format(sigma1_fft))
+print('sigma2 fft: {0:2f}'.format(sigma2_fft))
+print('sigma3 fft: {0:2f}'.format(sigma3_fft))
 
-sigma1 = ztools.integrate_psd(psd_2d_fft, Dpup, freq0, freq1)
-sigma2 = ztools.integrate_psd(psd_2d_fft, Dpup, freq1, freq2)
-sigma3 = ztools.integrate_psd(psd_2d_fft, Dpup, freq2, freq3)
-print('{0:2f}'.format(sigma1))
-print('{0:2f}'.format(sigma2))
-print('{0:2f}'.format(sigma3))
+sigma_from_psd_fft = np.sqrt(sigma1_fft**2+sigma2_fft**2+sigma3_fft**2)
 
-sigma_from_psd = np.sqrt(sigma1**2+sigma2**2+sigma3**2)
+print('total sigma fft: {0:2f}'.format(sigma_from_psd_fft))
+print('total std dev: {0}'.format(np.std(opd[mask])))
+print()
 
-print('{0:2f}'.format(sigma_from_psd))
-print('std dev: {0}'.format(np.std(opd[mask])))
+sigma1_mft = ztools.integrate_psd(psd_2d_mft, freq_cutoff, freq0, freq1)
+sigma2_mft = ztools.integrate_psd(psd_2d_mft, freq_cutoff, freq1, freq2)
+sigma3_mft = ztools.integrate_psd(psd_2d_mft, freq_cutoff, freq2, freq3)
+print('sigma1 mft: {0:2f}'.format(sigma1_mft))
+print('sigma2 mft: {0:2f}'.format(sigma2_mft))
+print('sigma3 mft: {0:2f}'.format(sigma3_mft))
+
+sigma_from_psd_mft = np.sqrt(sigma1_mft**2+sigma2_mft**2+sigma3_mft**2)
+
+print('total sigma mft: {0:2f}'.format(sigma_from_psd_mft))
+print('total std dev: {0}'.format(np.std(opd[mask])))
 
 

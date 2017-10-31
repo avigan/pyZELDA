@@ -567,9 +567,13 @@ def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
 
     return IC0, IC1, IC2
 
-def compute_psd(opd, mask=None, freq_max=None):
+def compute_psd(opd, mask=None, freq_cutoff=None):
     '''
     Compute the power spectral density fro a given phase map
+    When freq_Cutoff is specified, psd is computed with mft, using the same sampling 
+    as the fft that would normally be used to compute the psd.
+    This smapling makes the computation of the normalization factor consistent with the 
+    standard fft case.
 
     Parameters
     ----------    
@@ -580,7 +584,7 @@ def compute_psd(opd, mask=None, freq_max=None):
     mask : array_like
         mask pupil
         
-    freq_max : float
+    freq_cutoff : float
         maxium spatial frequency of the psd
         
     
@@ -613,13 +617,13 @@ def compute_psd(opd, mask=None, freq_max=None):
         norm = 1./mask.sum()
 
     # compute psd with fft or mft
-    if freq_max is None:
+    if freq_cutoff is None:
         fft_opd     = fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
         psd_2d      = norm * np.abs(fft_opd)**2
         psd_1d, rad = prof.mean(psd_2d)
         freq        = rad * Dpup/dim
     else:
-        fft_opd     = mft.mft(opd, Dpup, 2*freq_max*sampling, 2*freq_max)
+        fft_opd     = mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
         psd_2d      = norm * np.abs(fft_opd)**2
         psd_1d, rad = prof.mean(psd_2d)
         freq        = rad/sampling
@@ -627,11 +631,37 @@ def compute_psd(opd, mask=None, freq_max=None):
     return psd_2d, psd_1d, freq
 
 
-def integrate_psd(psd_2d, Dpup, freq_min, freq_max):
+def integrate_psd(psd_2d, freq_cutoff, freq_min, freq_max):
+
+    '''
+    Compute the integration of the psd between two spatial frequency bounds
+    
+    Parameters
+    ---------- 
+    psd_2d: array_like
+        PSD map normalized in (nm/cycle per pupil)^2
+        
+    freq_cutoff : float
+        maxium spatial frequency of the psd
+        
+    freq_min : float
+        lower bound of the spatial frequencies for integration
+    
+    freq_max : float
+        upper bound of the spatial frequencies for integration    
+             
+    
+    Returns
+    -------
+    
+    sigma : float
+        integrated value of the psd in nanometers
+    
+    '''
 
     dim = psd_2d.shape[-1]
-    freq_min_pix = freq_min*dim/Dpup 
-    freq_max_pix = freq_max*dim/Dpup
+    freq_min_pix = freq_min*dim/(2*freq_cutoff) 
+    freq_max_pix = freq_max*dim/(2*freq_cutoff)
     
     disc = aperture.disc(dim, freq_max_pix, diameter=False) \
     - aperture.disc(dim, freq_min_pix, diameter=False)
