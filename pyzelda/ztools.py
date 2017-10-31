@@ -17,7 +17,11 @@ import pyzelda.utils.circle_fit as circle_fit
 import poppy.zernike as zernike
 import scipy.ndimage as ndimage
 
+import numpy.fft as fft
+
 from astropy.io import fits
+
+import pyzelda.utils.prof as prof
 
 
 def number_of_frames(path, data_files):
@@ -563,4 +567,75 @@ def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
 
     return IC0, IC1, IC2
 
+def compute_psd(opd, mask=None, freq_max=None):
+    '''
+    Compute the power spectral density fro a given phase map
 
+    Parameters
+    ----------    
+    
+    opd : array_like
+        OPD map in nanometers
+        
+    mask : array_like
+        mask pupil
+        
+    freq_max : float
+        maxium spatial frequency of the psd
+        
+    
+    Returns
+    -------
+    
+    psd_2d: array_like
+        PSD map
+        
+    psd_1d: vector
+        azimuthal averaged profile of the PSD map
+        
+    freq: vector
+        vector of spatial frequencies corresponding to psd_1d
+    
+     
+    '''
+
+    Dpup      = opd.shape[-1]
+    dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
+    pad_width = int((dim - Dpup)/2)
+
+    sampling  = dim/Dpup
+    padded_opd = np.pad(opd, pad_width, 'constant')
+
+    # compute the surface of the mask pupil
+    if mask is None:
+        norm = 1./ ((Dpup**2) * np.pi/4)
+    else:
+        norm = 1./mask.sum()
+
+    # compute psd with fft or mft
+    if freq_max is None:
+        fft_opd     = fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
+        psd_2d      = norm * np.abs(fft_opd)**2
+        psd_1d, rad = prof.mean(psd_2d)
+        freq        = rad * Dpup/dim
+    else:
+        fft_opd     = mft.mft(opd, Dpup, 2*freq_max*sampling, 2*freq_max)
+        psd_2d      = norm * np.abs(fft_opd)**2
+        psd_1d, rad = prof.mean(psd_2d)
+        freq        = rad/sampling
+
+    return psd_2d, psd_1d, freq
+
+
+def integrate_psd(psd_2d, Dpup, freq_min, freq_max):
+
+    dim = psd_2d.shape[-1]
+    freq_min_pix = freq_min*dim/Dpup 
+    freq_max_pix = freq_max*dim/Dpup
+    
+    disc = aperture.disc(dim, freq_max_pix, diameter=False) \
+    - aperture.disc(dim, freq_min_pix, diameter=False)
+
+    sigma = np.sqrt(psd_2d[disc == 1].sum()) 
+
+    return sigma
