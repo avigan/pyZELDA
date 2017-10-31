@@ -567,6 +567,53 @@ def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
 
     return IC0, IC1, IC2
 
+def compute_fft_opd(opd, mask=None, freq_cutoff=None):
+    '''
+    compute the fft of the opd normalized in physical units (nm/cycle_per_pupil)
+    
+    Parameters
+    ----------    
+    
+    opd : array_like
+        OPD map in nanometers
+        
+    mask : array_like
+        mask pupil
+        
+    freq_cutoff : float
+        maxium spatial frequency of the psd
+        
+    
+    Returns
+    -------
+    
+    fft_opd: array_like
+        normalized fft of the opd
+    '''
+
+    Dpup      = opd.shape[-1]
+    dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
+    pad_width = int((dim - Dpup)/2)
+
+    sampling  = dim/Dpup
+    padded_opd = np.pad(opd, pad_width, 'constant')
+
+    # compute the surface of the mask pupil
+    if mask is None:
+        norm = np.sqrt(1./ ((Dpup**2) * np.pi/4))
+    else:
+        norm = np.sqrt(1./mask.sum())
+
+    # compute psd with fft or mft
+    if freq_cutoff is None:
+        fft_opd     = norm*fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
+    else:
+        fft_opd     = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
+
+    return fft_opd
+
+
+
 def compute_psd(opd, mask=None, freq_cutoff=None):
     '''
     Compute the power spectral density fro a given phase map
@@ -602,31 +649,19 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
     
      
     '''
-
     Dpup      = opd.shape[-1]
     dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
-    pad_width = int((dim - Dpup)/2)
-
     sampling  = dim/Dpup
-    padded_opd = np.pad(opd, pad_width, 'constant')
 
-    # compute the surface of the mask pupil
-    if mask is None:
-        norm = 1./ ((Dpup**2) * np.pi/4)
-    else:
-        norm = 1./mask.sum()
-
+    fft_opd     = compute_fft_opd(opd, mask, freq_cutoff)
+    psd_2d      = np.abs(fft_opd)**2
+    psd_1d, rad = prof.mean(psd_2d)
+        
     # compute psd with fft or mft
     if freq_cutoff is None:
-        fft_opd     = fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
-        psd_2d      = norm * np.abs(fft_opd)**2
-        psd_1d, rad = prof.mean(psd_2d)
-        freq        = rad * Dpup/dim
+        freq    = rad * Dpup/dim
     else:
-        fft_opd     = mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
-        psd_2d      = norm * np.abs(fft_opd)**2
-        psd_1d, rad = prof.mean(psd_2d)
-        freq        = rad/sampling
+        freq    = rad/sampling
 
     return psd_2d, psd_1d, freq
 
