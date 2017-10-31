@@ -30,8 +30,8 @@ padded_opd = np.pad(opd, pad_width, 'constant')
 psd_2d_fft, psd_1d_fft, rad_cpup_fft = ztools.compute_psd(opd, mask=mask)
 integral_psd_fft = np.sum(psd_2d_fft)
 
-
-psd_2d_mft, psd_1d_mft, rad_cpup_mft = ztools.compute_psd(opd, mask=mask, freq_cutoff=150.)
+freq_cutoff = 96.
+psd_2d_mft, psd_1d_mft, rad_cpup_mft = ztools.compute_psd(opd, mask=mask, freq_cutoff=freq_cutoff)
 integral_psd_mft = np.sum(psd_2d_mft)
 
 print('var dev: {0}'.format(np.var(opd[mask])))
@@ -54,7 +54,7 @@ freq1 = 4.
 freq2 = 20.
 freq3 = 384
 Dpup  = 384
-freq_cutoff = 150.
+
 
 sigma1_fft = ztools.integrate_psd(psd_2d_fft, Dpup/2, freq0, freq1)
 sigma2_fft = ztools.integrate_psd(psd_2d_fft, Dpup/2, freq1, freq2)
