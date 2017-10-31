@@ -934,7 +934,8 @@ def fix_badpix_vip(img, bpm, box=5):
 
 
 def fix_badpix(img, bpm, npix=8, weight=False):
-    '''Corrects the bad pixels, marked in the bad pixel mask.
+    '''
+    Corrects the bad pixels, marked in the bad pixel mask.
 
     It will fill in bad pixels by finding the NPIX nearest good
     pixels, toss the highest and lowest ones of the bunch, and then

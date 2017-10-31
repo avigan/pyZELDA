@@ -519,6 +519,7 @@ def zernike_expand(opd, nterms=32):
 
     return basis, coeffs, reconstructed_opd
 
+
 def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
     '''
     Compute the analytical expression of the zelda signal
@@ -545,50 +546,50 @@ def zelda_analytical_intensity(phi, b=0.5, theta=np.pi/2):
         array with the expression of the zelda signal with Taylor expansion to the 1st order
     
     IC2: vector_like
-        array with the expression of the zelda signal with Taylor expansion to the 2nd order
-     
+        array with the expression of the zelda signal with Taylor expansion to the 2nd order     
     '''
 
     npts = phi.size
 
-    ## intensity with sinusoid, linear, and quadratic expressions
+    # intensity with sinusoid, linear, and quadratic expressions
     IC0 = np.zeros((npts))
     IC1 = np.zeros((npts))
     IC2 = np.zeros((npts))
 
-    ## Normalized entrance pupil plane amplitude
+    # Normalized entrance pupil plane amplitude
     P = 1.0
-    ## Sinudoid intensity expression    
-    IC0 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(np.sin(phi)*np.sin(theta)-np.cos(phi)*(1.-np.cos(theta))) 
-    ## Linear intensity expression
-    IC1 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-np.cos(theta)))
-    ## Quadratic intensity expression
-    IC2 = P**2 + 2.*b**2*(1.- np.cos(theta)) + 2.*P*b*(phi*np.sin(theta)-(1.-0.5*phi**2)*(1.-np.cos(theta)))
+    
+    # Sinudoid intensity expression    
+    IC0 = P**2 + 2*b**2*(1 - np.cos(theta)) + 2*P*b*(np.sin(phi) * np.sin(theta) - np.cos(phi) * (1 - np.cos(theta)))
+    
+    # Linear intensity expression
+    IC1 = P**2 + 2*b**2*(1 - np.cos(theta)) + 2*P*b*(phi * np.sin(theta) - (1 - np.cos(theta)))
+    
+    # Quadratic intensity expression
+    IC2 = P**2 + 2*b**2*(1 - np.cos(theta)) + 2*P*b*(phi * np.sin(theta) - (1 - 0.5*phi**2) * (1 - np.cos(theta)))
 
     return IC0, IC1, IC2
 
+
 def compute_fft_opd(opd, mask=None, freq_cutoff=None):
     '''
-    compute the fft of the opd normalized in physical units (nm/cycle_per_pupil)
+    Compute the fft of the opd normalized in physical units (nm/cycle_per_pupil)
     
     Parameters
-    ----------    
-    
+    ---------- 
     opd : array_like
         OPD map in nanometers
         
     mask : array_like
-        mask pupil
+        Pupil mask
         
     freq_cutoff : float
-        maxium spatial frequency of the psd
-        
+        Maxium spatial frequency of the psd        
     
     Returns
-    -------
-    
+    -------    
     fft_opd: array_like
-        normalized fft of the opd
+        Normalized fft of the opd
     '''
 
     Dpup      = opd.shape[-1]
@@ -600,54 +601,49 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
 
     # compute the surface of the mask pupil
     if mask is None:
-        norm = np.sqrt(1./ ((Dpup**2) * np.pi/4))
+        norm = np.sqrt(1 / ((Dpup**2) * np.pi/4))
     else:
-        norm = np.sqrt(1./mask.sum())
+        norm = np.sqrt(1 / mask.sum())
 
     # compute psd with fft or mft
     if freq_cutoff is None:
-        fft_opd     = norm*fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
+        fft_opd = norm*fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
     else:
-        fft_opd     = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
+        fft_opd = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
 
     return fft_opd
-
 
 
 def compute_psd(opd, mask=None, freq_cutoff=None):
     '''
     Compute the power spectral density fro a given phase map
-    When freq_Cutoff is specified, psd is computed with mft, using the same sampling 
-    as the fft that would normally be used to compute the psd.
-    This smapling makes the computation of the normalization factor consistent with the 
-    standard fft case.
+    
+    When freq_Cutoff is specified, psd is computed with mft, using the
+    same sampling as the fft that would normally be used to compute
+    the psd.  This smapling makes the computation of the normalization
+    factor consistent with the standard fft case.
 
     Parameters
-    ----------    
-    
+    ----------        
     opd : array_like
         OPD map in nanometers
         
     mask : array_like
-        mask pupil
+        Pupil mask
         
     freq_cutoff : float
-        maxium spatial frequency of the psd
-        
+        Maxium spatial frequency of the psd
     
     Returns
-    -------
-    
+    -------    
     psd_2d: array_like
         PSD map
         
     psd_1d: vector
-        azimuthal averaged profile of the PSD map
+        Azimuthal averaged profile of the PSD map
         
     freq: vector
-        vector of spatial frequencies corresponding to psd_1d
-    
-     
+        Vector of spatial frequencies corresponding to psd_1d
     '''
     Dpup      = opd.shape[-1]
     dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
@@ -677,20 +673,18 @@ def integrate_psd(psd_2d, freq_cutoff, freq_min, freq_max):
         PSD map normalized in (nm/cycle per pupil)^2
         
     freq_cutoff : float
-        maxium spatial frequency of the psd
+        Maxium spatial frequency of the psd
         
     freq_min : float
-        lower bound of the spatial frequencies for integration
+        Lower bound of the spatial frequencies for integration
     
     freq_max : float
-        upper bound of the spatial frequencies for integration    
-             
+        Upper bound of the spatial frequencies for integration
     
     Returns
-    -------
-    
+    -------    
     sigma : float
-        integrated value of the psd in nanometers
+        Integrated value of the psd in nanometers
     
     '''
 
@@ -699,7 +693,7 @@ def integrate_psd(psd_2d, freq_cutoff, freq_min, freq_max):
     freq_max_pix = freq_max*dim/(2*freq_cutoff)
     
     disc = aperture.disc(dim, freq_max_pix, diameter=False) \
-    - aperture.disc(dim, freq_min_pix, diameter=False)
+            - aperture.disc(dim, freq_min_pix, diameter=False)
 
     sigma = np.sqrt(psd_2d[disc == 1].sum()) 
 
