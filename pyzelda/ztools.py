@@ -504,7 +504,7 @@ def zernike_expand(opd, nterms=32):
     theta[wbad] = 0
 
     # create the Zernike polynomiales basis
-    basis  = zernike.zernike_basis(nterms=nterms, rho=rho, theta=theta)
+    basis = zernike.zernike_basis(nterms=nterms, rho=rho, theta=theta)
 
     coeffs = np.zeros((nopd, nterms))
     reconstructed_opd = np.zeros_like(opd)
@@ -592,22 +592,21 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
         Normalized fft of the opd
     '''
 
-    Dpup      = opd.shape[-1]
-    dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
-    pad_width = int((dim - Dpup)/2)
-
-    sampling  = dim/Dpup
-    padded_opd = np.pad(opd, pad_width, 'constant')
+    Dpup       = opd.shape[-1]
+    dim        = 2**(np.ceil(np.log(2*Dpup)/np.log(2)))
+    sampling   = dim/Dpup
 
     # compute the surface of the mask pupil
     if mask is None:
         norm = np.sqrt(1 / ((Dpup**2) * np.pi/4))
     else:
         norm = np.sqrt(1 / mask.sum())
-
+    
     # compute psd with fft or mft
     if freq_cutoff is None:
-        fft_opd = norm*fft.fftshift(fft.fft2(fft.fftshift(padded_opd), norm='ortho'))
+        pad_width = int((dim - Dpup)/2)
+        pad_opd = np.pad(opd, pad_width, 'constant')
+        fft_opd = norm * fft.fftshift(fft.fft2(fft.fftshift(pad_opd), norm='ortho'))
     else:
         fft_opd = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
 
@@ -645,9 +644,10 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
     freq: vector
         Vector of spatial frequencies corresponding to psd_1d
     '''
-    Dpup      = opd.shape[-1]
-    dim       = 2**(np.ceil(np.log(2*Dpup)/np.log(2))+1)
-    sampling  = dim/Dpup
+    
+    Dpup     = opd.shape[-1]
+    dim      = 2**(np.ceil(np.log(2*Dpup)/np.log(2)))
+    sampling = dim/Dpup
 
     fft_opd     = compute_fft_opd(opd, mask, freq_cutoff)
     psd_2d      = np.abs(fft_opd)**2
@@ -655,9 +655,9 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
         
     # compute psd with fft or mft
     if freq_cutoff is None:
-        freq    = rad * Dpup/dim
+        freq = rad * Dpup/dim
     else:
-        freq    = rad/sampling
+        freq = rad/sampling
 
     return psd_2d, psd_1d, freq
 
