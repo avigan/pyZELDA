@@ -19,7 +19,7 @@ import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 import pyzelda.ztools as ztools
 
-import poppy.zernike as zernike
+import utils.zernike as zernike
 import scipy.ndimage as ndimage
 
 from astropy.io import fits
