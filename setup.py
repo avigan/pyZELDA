@@ -19,7 +19,7 @@ setup(
     keywords='zernike wavefront sensor zelda',
     packages=['pyzelda', 'pyzelda.utils'],
     install_requires=[
-        'numpy', 'scipy', 'astropy', 'matplotlib', 'poppy'
+        'numpy', 'scipy', 'astropy', 'matplotlib'
     ],
     include_package_data=True,
     package_data={
