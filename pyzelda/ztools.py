@@ -14,7 +14,7 @@ import pyzelda.utils.imutils as imutils
 import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 
-import poppy.zernike as zernike
+import utils.zernike as zernike
 import scipy.ndimage as ndimage
 
 import numpy.fft as fft
