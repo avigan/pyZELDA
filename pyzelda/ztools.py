@@ -8,19 +8,16 @@ mamadou.ndiaye@oca.eu
 
 import os
 import numpy as np
+import scipy.ndimage as ndimage
+import numpy.fft as fft
+
+from astropy.io import fits
 
 import pyzelda.utils.mft as mft
 import pyzelda.utils.imutils as imutils
 import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
-
-import utils.zernike as zernike
-import scipy.ndimage as ndimage
-
-import numpy.fft as fft
-
-from astropy.io import fits
-
+import pyzelda.utils.zernike as zernike
 import pyzelda.utils.prof as prof
 
 
