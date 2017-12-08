@@ -12,17 +12,17 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import numpy as np
+import scipy.ndimage as ndimage
+
+from astropy.io import fits
 
 import pyzelda.utils.mft as mft
 import pyzelda.utils.imutils as imutils
 import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 import pyzelda.ztools as ztools
+import pyzelda.utils.zernike as zernike
 
-import utils.zernike as zernike
-import scipy.ndimage as ndimage
-
-from astropy.io import fits
 
 if sys.version_info < (3, 0):
     import ConfigParser
