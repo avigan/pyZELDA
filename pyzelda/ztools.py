@@ -597,6 +597,7 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
     if mask is None:
         norm = np.sqrt(1 / ((Dpup**2) * np.pi/4))
     else:
+        opd  = opd * mask
         norm = np.sqrt(1 / mask.sum())
     
     # compute psd with fft or mft
