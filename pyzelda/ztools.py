@@ -696,3 +696,58 @@ def integrate_psd(psd_2d, freq_cutoff, freq_min, freq_max):
     sigma = np.sqrt(psd_2d[disc == 1].sum()) 
 
     return sigma
+
+
+def fourier_filter(opd, freq_cutoff=40, lowpass=True, window='hann', mask=None):
+    '''
+    High-pass or low-pass filtering of an OPD map
+
+    Parameters
+    ----------
+    opd : array_like
+        OPD map in nanometers
+
+    freq_cutoff : float
+        Cutoff frequency of the PSD in cycle/pupil. Default is 40
+
+    lowpass : bool    
+        Apply a low-pass filter or a high-pass filter. Default is
+        True, i.e. apply a low-pass filter.    
+
+    window : bool
+        Filtering window type. Possible valeus are Hann and rect.
+        Default is Hann
+   
+    mask : array_like
+        Pupil mask
+        
+    Returns
+    -------
+    opd_filtered : array_like
+        Filtered OPD    
+    '''
+    
+    Dpup = opd.shape[-1]
+
+    # filtering window
+    M = freq_cutoff
+    xx, yy = np.meshgrid(np.arange(2*M)-M, np.arange(2*M)-M)
+    rr = M + np.sqrt(xx**2 + yy**2)
+    if window.lower() == 'rect':
+        window = np.ones((2*M, 2*M))
+    elif window.lower() == 'hann':
+        window = 0.5 - 0.5*np.cos(2*np.pi*rr / (2*M-1))
+    window[rr >= 2*M] = 0
+    window = np.pad(window, (Dpup-2*M)//2, mode='constant', constant_values=0)
+
+    # pupil mask
+    if mask is None:
+        mask = (opd != 0)
+
+    # filter opd map
+    opd_fft = fft.fftshift(fft.fft2(fft.fftshift(opd)))
+    opd_filtered = fft.fftshift(fft.ifft2(fft.fftshift(opd_fft*window)))
+    opd_filtered = opd_filtered.real
+    opd_filtered *= mask
+
+    return opd_filtered
