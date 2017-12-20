@@ -501,7 +501,7 @@ def zernike_expand(opd, nterms=32):
     theta[wbad] = 0
 
     # create the Zernike polynomiales basis
-    basis = zernike.zernike_basis(nterms=nterms, rho=rho, theta=theta)
+    basis = zernike.zernike_basis(nterms=nterms, rho=rho, theta=theta, outside=0)
 
     coeffs = np.zeros((nopd, nterms))
     reconstructed_opd = np.zeros_like(opd)
