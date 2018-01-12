@@ -689,9 +689,12 @@ def integrate_psd(psd_2d, freq_cutoff, freq_min, freq_max):
     dim = psd_2d.shape[-1]
     freq_min_pix = freq_min*dim/(2*freq_cutoff) 
     freq_max_pix = freq_max*dim/(2*freq_cutoff)
-    
-    disc = aperture.disc(dim, freq_max_pix, diameter=False) \
-            - aperture.disc(dim, freq_min_pix, diameter=False)
+
+    if freq_min == 0:
+        disc = aperture.disc(dim, freq_max_pix, diameter=False)        
+    else:
+        disc = aperture.disc(dim, freq_max_pix, diameter=False) \
+                - aperture.disc(dim, freq_min_pix, diameter=False)
 
     sigma = np.sqrt(psd_2d[disc == 1].sum()) 
 
