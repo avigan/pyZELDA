@@ -648,7 +648,12 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
     sampling = dim/Dpup
 
     # remove piston
-    opd -= opd[mask != 0].mean()
+    if mask is None:
+        print()
+    else:    
+        idx = (mask != 0)
+        opd[idx] -= opd[idx].mean()
+        print(opd[idx].mean())
 
     fft_opd     = compute_fft_opd(opd, mask, freq_cutoff)
     psd_2d      = np.abs(fft_opd)**2
