@@ -354,6 +354,9 @@ class Sensor():
             kw = 2*np.pi / cwave
             opd_nm = (1/kw) * theta * 1e9
 
+            # remove piston
+            opd_nm[pup] -= opd_nm[pup].mean()
+            
             # statistics
             if (silent is False):
                 print('OPD statistics:')
@@ -368,6 +371,7 @@ class Sensor():
         opd_nm = zelda_pupil
 
         return opd_nm
+    
 
     def mask_phase_shift(self, wave):
         '''
