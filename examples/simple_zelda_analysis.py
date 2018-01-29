@@ -28,7 +28,7 @@ clear_pupil, zelda_pupil, center = z.read_files(data_path, clear_pupil_files, ze
                                                 collapse_clear=True, collapse_zelda=True)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
-opd_map = opd_map.squeeze()+10000
+opd_map = opd_map.squeeze()
 print('{0}'.format(opd_map.mean()))
 
 Dpup=opd_map.shape[-1]
