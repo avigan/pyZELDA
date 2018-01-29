@@ -647,6 +647,9 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
     dim      = 2**(np.ceil(np.log(2*Dpup)/np.log(2)))
     sampling = dim/Dpup
 
+    # remove piston
+    opd -= opd[mask != 0].mean()
+
     fft_opd     = compute_fft_opd(opd, mask, freq_cutoff)
     psd_2d      = np.abs(fft_opd)**2
     psd_1d, rad = prof.mean(psd_2d)
