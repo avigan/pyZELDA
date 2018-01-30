@@ -15,6 +15,7 @@ import numpy as np
 import scipy.ndimage as ndimage
 
 from astropy.io import fits
+from pathlib import Path
 
 import pyzelda.utils.mft as mft
 import pyzelda.utils.imutils as imutils
@@ -81,8 +82,8 @@ class Sensor():
         self._instrument = instrument
 
         # read configuration file
-        package_directory = os.path.dirname(os.path.abspath(__file__))
-        configfile = os.path.join(package_directory, 'instruments', instrument+'.ini')
+        package_directory = Path(__file__).resolve().parent
+        configfile = package_directory / 'instruments' / '{0}.ini'.format(instrument)
         config = ConfigParser.ConfigParser()
 
         try:
@@ -201,6 +202,9 @@ class Sensor():
         # Deal with files
         ##############################
 
+        # path
+        path = Path(path)
+        
         # read number of frames
         nframes_clear = ztools.number_of_frames(path, clear_pupil_files)	
         nframes_zelda = ztools.number_of_frames(path, zelda_pupil_files)	
