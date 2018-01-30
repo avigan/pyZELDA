@@ -129,10 +129,10 @@ def pupil_center(clear_pupil, center_method):
     if (center_method == 'fit'):
         # circle fit
         kernel = np.ones((10, 10), dtype=int)
-        tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
-
+        tmp = ndimage.binary_fill_holes(tmp, structure=kernel).astype(int)
+        
         kernel = np.ones((3, 3), dtype=int)
-        tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
+        tmp_flt = ndimage.binary_erosion(tmp, structure=kernel).astype(int)
 
         diff = tmp-tmp_flt
         cc = np.where(diff != 0)
