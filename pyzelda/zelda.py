@@ -39,14 +39,43 @@ class Sensor():
     # Constructor
     ##################################################
     
-    def __init__(self, instrument):
-        '''
-        Initialization of the Sensor class
+    def __init__(self, instrument, **kwargs):
+        '''Initialization of the Sensor class
 
         Parameters
         ----------
         instrument : str
             Instrument associated with the sensor
+
+        Optional keywords
+        -----------------
+        It is possible to override the default parameters of the
+        instrument by providing any of the following keywords. If none
+        is provided, the default value is used.
+
+        mask_depth : float
+            Physical depth of the ZELDA mask, in meters
+
+        mask_diameter : float
+            Physical diameter of the ZELDA mask, in meters
+
+        mask_substrate : str
+            Material of the ZELDA mask substrate
+
+        pupil_diameter : int
+            Pupil diameter on the detector, in pixels
+
+        Fratio : float
+            Focal ratio at the mask focal plane
+
+        width : int
+            Detector sub-window width, in pixels
+
+        height : int
+            Detector sub-window height, in pixels
+
+        origin : tuple (2 int)
+            Origin of the detector sub-window, in pixels
         '''
 
         self._instrument = instrument
@@ -60,20 +89,20 @@ class Sensor():
             config.read(configfile)
 
             # mask physical parameters
-            self._mask_depth = float(config.get('mask', 'depth'))
-            self._mask_diameter = float(config.get('mask', 'diameter'))
-            self._mask_substrate = config.get('mask', 'substrate')
+            self._mask_depth = kwargs.get('mask_depth', float(config.get('mask', 'depth')))
+            self._mask_diameter = kwargs.get('mask_diameter', float(config.get('mask', 'diameter')))
+            self._mask_substrate = kwargs.get('mask_substrate', config.get('mask', 'substrate'))
 
             # instrument parameters
-            self._pupil_diameter = int(config.get('instrument', 'pupil_diameter'))
-            self._Fratio = float(config.get('instrument', 'Fratio'))
+            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('instrument', 'pupil_diameter')))
+            self._Fratio = kwargs.get('Fratio', float(config.get('instrument', 'Fratio')))
 
             # detector sub-window parameters
-            self._width = int(config.get('detector_crop', 'width'))
-            self._height = int(config.get('detector_crop', 'width'))
+            self._width = kwargs.get('width', int(config.get('detector_crop', 'width')))
+            self._height = kwargs.get('height', int(config.get('detector_crop', 'height')))
             cx = int(config.get('detector_crop', 'origin_x'))
             cy = int(config.get('detector_crop', 'origin_y'))
-            self._origin = (cx, cy)
+            self._origin = kwargs.get('origin', (cx, cy))
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
         
