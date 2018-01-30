@@ -6,12 +6,12 @@ arthur.vigan@lam.fr
 mamadou.ndiaye@oca.eu
 '''
 
-import os
 import numpy as np
 import scipy.ndimage as ndimage
 import numpy.fft as fft
 
 from astropy.io import fits
+from pathlib import Path
 
 import pyzelda.utils.mft as mft
 import pyzelda.utils.imutils as imutils
@@ -27,7 +27,7 @@ def number_of_frames(path, data_files):
 
     Parameters
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the FITS files
     
     data_files : str
@@ -43,12 +43,12 @@ def number_of_frames(path, data_files):
     
     nframes_total = 0
     for fname in data_files:
-        img = fits.getdata(os.path.join(path, fname+'.fits'))
+        img = fits.getdata(path / '{0}.fits'.format(fname))
         if img.ndim == 2:
             nframes_total += 1
         elif img.ndim == 3:
             nframes_total += img.shape[0]
-            
+
     return nframes_total  
 
 
@@ -58,7 +58,7 @@ def load_data(path, data_files, width, height, origin):
 
     Parameters:
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the FITS files
     
     data_files : str
@@ -90,7 +90,7 @@ def load_data(path, data_files, width, height, origin):
     data_cube = np.zeros((nframes_total, height, width))
     frame_idx = 0
     for fname in data_files:
-        data = fits.getdata(path+fname+'.fits')        
+        data = fits.getdata(path / '{0}.fits'.format(fname))
         if data.ndim == 2:
             data = data[np.newaxis, ...]
         
@@ -158,7 +158,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
 
     Parameters
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the TIFF files
     
     data_files : str
@@ -196,7 +196,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     frame_idx = 0
     for fname in data_files:
         # read data
-        data = fits.getdata(path+fname+'.fits')
+        data = fits.getdata(path / '{0}.fits'.format(fname))
         if data.ndim == 2:
             data = data[np.newaxis, ...]
         nframes = data.shape[0]
