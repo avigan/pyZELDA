@@ -325,8 +325,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
         Instrument pupil radius, in pixel
 
     Fratio : float
-        F ratio at the mask focal plane    
-
+        Focal ratio at the mask focal plane
     
     wave : float, optional
         Wavelength of the data, in m.
@@ -433,8 +432,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
         Instrument pupil diameter, in pixel.
 
     Fratio : float
-        F ratio at the mask focal plane    
-
+        Focal ratio at the mask focal plane
     
     wave : float, optional
         Wavelength of the data, in m.
