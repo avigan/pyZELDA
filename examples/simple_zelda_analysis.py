@@ -1,17 +1,18 @@
 # compatibility with python 2.7
 from __future__ import absolute_import, division, print_function
 
-import os
 import matplotlib.pyplot as plt
+import numpy as np
 
 import pyzelda.zelda as zelda
 import pyzelda.ztools as ztools
+import pyzelda.utils.aperture as aperture
 
-# path = '/Users/mndiaye/Dropbox/python/zelda/pyZELDA/'
-path = '/Users/avigan/Work/GitHub/pyZELDA/'
-# path = 'D:/Programmes/GitHub/pyZELDA/'
+from pathlib import Path
 
-data_path = os.path.join(path, 'data/')
+# path = Path('/Users/mndiaye/Dropbox/python/zelda/pyZELDA/')
+path = Path('/Users/avigan/Work/GitHub/pyZELDA/data/')
+# path = Path('D:/Programmes/GitHub/pyZELDA/')
 
 wave = 1.642e-6
 
@@ -21,7 +22,7 @@ dark_file = 'SPHERE_BACKGROUND'
 
 z = zelda.Sensor('SPHERE-IRDIS')
 
-clear_pupil, zelda_pupil, center = z.read_files(data_path, clear_pupil_files, zelda_pupil_files, dark_file,
+clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
                                                 collapse_clear=False, collapse_zelda=False)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
@@ -51,4 +52,3 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
-

@@ -6,12 +6,12 @@ arthur.vigan@lam.fr
 mamadou.ndiaye@oca.eu
 '''
 
-import os
 import numpy as np
 import scipy.ndimage as ndimage
 import numpy.fft as fft
 
 from astropy.io import fits
+from pathlib import Path
 
 import pyzelda.utils.mft as mft
 import pyzelda.utils.imutils as imutils
@@ -27,7 +27,7 @@ def number_of_frames(path, data_files):
 
     Parameters
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the FITS files
     
     data_files : str
@@ -43,12 +43,12 @@ def number_of_frames(path, data_files):
     
     nframes_total = 0
     for fname in data_files:
-        img = fits.getdata(os.path.join(path, fname+'.fits'))
+        img = fits.getdata(path / '{0}.fits'.format(fname))
         if img.ndim == 2:
             nframes_total += 1
         elif img.ndim == 3:
             nframes_total += img.shape[0]
-            
+
     return nframes_total  
 
 
@@ -58,7 +58,7 @@ def load_data(path, data_files, width, height, origin):
 
     Parameters:
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the FITS files
     
     data_files : str
@@ -90,7 +90,7 @@ def load_data(path, data_files, width, height, origin):
     data_cube = np.zeros((nframes_total, height, width))
     frame_idx = 0
     for fname in data_files:
-        data = fits.getdata(path+fname+'.fits')        
+        data = fits.getdata(path / '{0}.fits'.format(fname))
         if data.ndim == 2:
             data = data[np.newaxis, ...]
         
@@ -129,10 +129,10 @@ def pupil_center(clear_pupil, center_method):
     if (center_method == 'fit'):
         # circle fit
         kernel = np.ones((10, 10), dtype=int)
-        tmp = ndimage.binary_fill_holes(tmp, structure=kernel)
-
+        tmp = ndimage.binary_fill_holes(tmp, structure=kernel).astype(int)
+        
         kernel = np.ones((3, 3), dtype=int)
-        tmp_flt = ndimage.binary_erosion(tmp, structure=kernel)
+        tmp_flt = ndimage.binary_erosion(tmp, structure=kernel).astype(int)
 
         diff = tmp-tmp_flt
         cc = np.where(diff != 0)
@@ -158,7 +158,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
 
     Parameters
     ----------
-    path : str
+    path : Path
         Path to the directory that contains the TIFF files
     
     data_files : str
@@ -196,7 +196,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     frame_idx = 0
     for fname in data_files:
         # read data
-        data = fits.getdata(path+fname+'.fits')
+        data = fits.getdata(path / '{0}.fits'.format(fname))
         if data.ndim == 2:
             data = data[np.newaxis, ...]
         nframes = data.shape[0]
@@ -325,8 +325,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
         Instrument pupil radius, in pixel
 
     Fratio : float
-        F ratio at the mask focal plane    
-
+        Focal ratio at the mask focal plane
     
     wave : float, optional
         Wavelength of the data, in m.
@@ -433,8 +432,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
         Instrument pupil diameter, in pixel.
 
     Fratio : float
-        F ratio at the mask focal plane    
-
+        Focal ratio at the mask focal plane
     
     wave : float, optional
         Wavelength of the data, in m.
@@ -646,6 +644,11 @@ def compute_psd(opd, mask=None, freq_cutoff=None):
     Dpup     = opd.shape[-1]
     dim      = 2**(np.ceil(np.log(2*Dpup)/np.log(2)))
     sampling = dim/Dpup
+
+    # remove piston
+    if mask is not None:
+        idx = (mask != 0)
+        opd[idx] -= opd[idx].mean()
 
     fft_opd     = compute_fft_opd(opd, mask, freq_cutoff)
     psd_2d      = np.abs(fft_opd)**2
