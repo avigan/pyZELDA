@@ -90,13 +90,15 @@ class Sensor():
             config.read(configfile)
 
             # mask physical parameters
+            self._Fratio = kwargs.get('Fratio', float(config.get('mask', 'Fratio')))
             self._mask_depth = kwargs.get('mask_depth', float(config.get('mask', 'depth')))
             self._mask_diameter = kwargs.get('mask_diameter', float(config.get('mask', 'diameter')))
             self._mask_substrate = kwargs.get('mask_substrate', config.get('mask', 'substrate'))
 
-            # instrument parameters
-            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('instrument', 'pupil_diameter')))
-            self._Fratio = kwargs.get('Fratio', float(config.get('instrument', 'Fratio')))
+            # pupil parameters
+            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'pupil_diameter')))
+            self._pupil_type = kwargs.get('pupil_type', config.get('pupil', 'pupil_type'))
+            self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'pupil_anamorphism')))
 
             # detector sub-window parameters
             self._width = kwargs.get('width', int(config.get('detector_crop', 'width')))
@@ -136,6 +138,14 @@ class Sensor():
     def pupil_diameter(self):
         return self._pupil_diameter
 
+    @property
+    def pupil_anamorphism(self):
+        return self._pupil_anamorphism
+    
+    @property
+    def pupil_type(self):
+        return self._pupil_type
+    
     @property
     def detector_subwindow_width(self):
         return self._width
