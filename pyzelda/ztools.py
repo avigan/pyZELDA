@@ -152,7 +152,7 @@ def pupil_center(clear_pupil, center_method):
     return c
 
 
-def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
+def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin, anamorphism):
     '''
     Read data cubes from disk and recenter them
 
@@ -178,7 +178,10 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     
     origin : tuple
         Origin point of the detector window to be extracted in the raw files
-    
+
+    anamorphism : tuple
+        Pupil anamorphism. If not None, it must be a 2-elements tuple
+        with the scaling to apply along the x and y
     '''
     center = np.array(center)
     cint = center.astype(np.int)
@@ -191,7 +194,7 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
     # determine total number of frames
     nframes_total = number_of_frames(path, data_files)
 
-    ext = 5
+    ext = 10
     data_cube = np.empty((nframes_total, dim+2*ext, dim+2*ext))
     frame_idx = 0
     for fname in data_files:
@@ -217,12 +220,15 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin):
         img = img - dark_sub
 
         img = imutils.sigma_filter(img, box=5, nsigma=3, iterate=True)
-        img = imutils.shift(img, cint-center-ext)
+        img = imutils.shift(img, cint-center)
+
+        if anamorphism is not None:
+            img = imutils.scale(img, anamorphism, method='interp', center=(cc+ext, cc+ext))
         
         data_cube[idx] = img
     
-    data_cube = data_cube[:, :dim, :dim]
-        
+    data_cube = data_cube[:, ext:dim+ext, ext:dim+ext]
+    
     return data_cube
 
 

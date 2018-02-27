@@ -260,9 +260,9 @@ class Sensor():
         # Clean and recenter images
         ##############################
         clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
-                                                  center, collapse_clear, self._origin)
+                                                  center, collapse_clear, self._origin, self._pupil_anamorphism)
         zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
-                                                  center, collapse_zelda, self._origin)
+                                                  center, collapse_zelda, self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
     
