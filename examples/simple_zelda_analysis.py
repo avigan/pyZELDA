@@ -20,10 +20,10 @@ clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE
 zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
 dark_file = 'SPHERE_BACKGROUND'
 
-z = zelda.Sensor('SPHERE-IRDIS')
+z = zelda.Sensor('SPHERE-IRDIS', pupil_type='full')
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
-                                                collapse_clear=False, collapse_zelda=False)
+                                                collapse_clear=True, collapse_zelda=True)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
 
