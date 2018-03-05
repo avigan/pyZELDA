@@ -374,8 +374,7 @@ def vlt_pupil(dim, diameter, spiders=False, spiders_orientation=0, spiders_thick
     return pup
 
 
-def sphere_irdis_pupil(dim, dead_actuator_diameter=0.025, spiders=False,
-                       spiders_orientation=0):
+def sphere_irdis_pupil(dim, dead_actuator_diameter=0, spiders=True, spiders_orientation=0):
     '''SPHERE pupil with dead actuators mask and spiders. Measured from a
     real pupil image acquired with IRDIS. In this SPHERE pupil, the origin
     and angle of the spiders are tweaked to match exactly the pupil as 
@@ -389,7 +388,7 @@ def sphere_irdis_pupil(dim, dead_actuator_diameter=0.025, spiders=False,
     
     dead_actuator_diameter : float
         Size of the dead actuators mask, in fraction of the pupil
-        diameter. Default is 0.025
+        diameter. Default is 0
 
     spiders : bool
         Draw spiders. Default is False
