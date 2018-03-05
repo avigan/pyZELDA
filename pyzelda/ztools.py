@@ -308,7 +308,8 @@ def refractive_index(wave, substrate, T=293):
     return n
 
 
-def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, pupil_diameter, R_pupil_pixels, Fratio, wave):
+def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate,
+                                       pupil_diameter, R_pupil_pixels, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -380,22 +381,22 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # here equal to the mask size
     m1 = 2*R_mask*(pupil_diameter/(2.*R_pupil_pixels))
 
-    # defintion of the electric field in plane A in the absence of aberrations
+    # definition of the electric field in plane A in the absence of aberrations
     ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
-
+    
     # --------------------------------
     # plane B (Focal plane)
 
     # calculation of the electric field in plane B with MFT within the Zernike
     # sensor mask
     ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, pupil_diameter, D_mask_pixels, m1)
-
+    
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
     ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
-
+    
     # normalization term using the expression of the field in the absence of aberrations without mask
     norm_ampl_PC_noaberr = 1/np.max(np.abs(ampl_PA_noaberr))
-
+    
     # --------------------------------
     # plane C (Relayed pupil plane)
 
@@ -413,9 +414,8 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     #                 aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
 
     reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) 
-
+    
     return reference_wave, expi
-
 
 
 def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diameter, Fratio, wave):
