@@ -54,6 +54,9 @@ class Sensor():
         instrument by providing any of the following keywords. If none
         is provided, the default value is used.
 
+        mask_Fratio : float
+            Focal ratio at the mask focal plane
+
         mask_depth : float
             Physical depth of the ZELDA mask, in meters
 
@@ -66,16 +69,22 @@ class Sensor():
         pupil_diameter : int
             Pupil diameter on the detector, in pixels
 
-        Fratio : float
-            Focal ratio at the mask focal plane
+        pupil_anamorphism : tuple
+            Pupil anamorphism in the (x,y) directions. Can be None
 
-        width : int
+        pupil_full : bool
+            Use full telescope pupil
+
+        pupil_function : str
+            Name of function to generate the full telescope pupil
+
+        detector_width : int
             Detector sub-window width, in pixels
 
-        height : int
+        detector_height : int
             Detector sub-window height, in pixels
 
-        origin : tuple (2 int)
+        detector_origin : tuple (2 int)
             Origin of the detector sub-window, in pixels
         '''
 
@@ -90,28 +99,27 @@ class Sensor():
             config.read(configfile)
 
             # mask physical parameters
-            self._Fratio = kwargs.get('Fratio', float(config.get('mask', 'Fratio')))
+            self._Fratio = kwargs.get('mask_Fratio', float(config.get('mask', 'Fratio')))
             self._mask_depth = kwargs.get('mask_depth', float(config.get('mask', 'depth')))
             self._mask_diameter = kwargs.get('mask_diameter', float(config.get('mask', 'diameter')))
             self._mask_substrate = kwargs.get('mask_substrate', config.get('mask', 'substrate'))
 
             # pupil parameters
-            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'pupil_diameter')))
-            self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'pupil_full'))))
-            self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'pupil_anamorphism')))
+            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'diameter')))
+            self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'full'))))
+            self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'anamorphism')))
 
-            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'pupil_function'))            
+            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))            
             self._pupil_function = eval('aperture.{0}'.format(pupil_function))
             
             # detector sub-window parameters
-            self._width = kwargs.get('width', int(config.get('detector_crop', 'width')))
-            self._height = kwargs.get('height', int(config.get('detector_crop', 'height')))
-            cx = int(config.get('detector_crop', 'origin_x'))
-            cy = int(config.get('detector_crop', 'origin_y'))
+            self._width = kwargs.get('detector_width', int(config.get('detector', 'width')))
+            self._height = kwargs.get('detector_height', int(config.get('detector', 'height')))
+            cx = int(config.get('detector', 'origin_x'))
+            cy = int(config.get('detector', 'origin_y'))
             self._origin = kwargs.get('origin', (cx, cy))
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
-        
     
     ##################################################
     # Properties
