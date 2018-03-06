@@ -97,9 +97,12 @@ class Sensor():
 
             # pupil parameters
             self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'pupil_diameter')))
-            self._pupil_type = kwargs.get('pupil_type', config.get('pupil', 'pupil_type'))
+            self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'pupil_full'))))
             self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'pupil_anamorphism')))
 
+            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'pupil_function'))            
+            self._pupil_function = eval('aperture.{0}'.format(pupil_function))
+            
             # detector sub-window parameters
             self._width = kwargs.get('width', int(config.get('detector_crop', 'width')))
             self._height = kwargs.get('height', int(config.get('detector_crop', 'height')))
@@ -143,8 +146,12 @@ class Sensor():
         return self._pupil_anamorphism
     
     @property
-    def pupil_type(self):
-        return self._pupil_type
+    def pupil_full(self):
+        return self._pupil_full
+    
+    @property
+    def pupil_function(self):
+        return self._pupil_function
     
     @property
     def detector_subwindow_width(self):
