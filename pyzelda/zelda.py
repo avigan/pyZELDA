@@ -343,9 +343,9 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         if self._pupil_full:
             pupil_func = self._pupil_function
-            pup = pupil_func(pupil_diameter)
+            pupil = pupil_func(pupil_diameter)
         else:
-            pup = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
+            pupil = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
         
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
@@ -354,7 +354,7 @@ class Sensor():
         for w in wave:
             reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
                                                                 self._mask_substrate, self._Fratio,
-                                                                pupil_diameter, w)
+                                                                pupil_diameter, pupil, w)
             mask_diffraction_prop.append((reference_wave, expi))
 
         # ++++++++++++++++++++++++++++++++++
@@ -365,7 +365,7 @@ class Sensor():
         nframes_zelda = len(zelda_pupil)
 
         # boolean pupil
-        pup = pup.astype(bool)
+        pup = pupil.astype(bool)
         
         # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
         if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
