@@ -353,8 +353,8 @@ class Sensor():
         mask_diffraction_prop = []
         for w in wave:
             reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
-                                                                self._mask_substrate,
-                                                                pupil_diameter, self._Fratio, w)
+                                                                self._mask_substrate, self._Fratio,
+                                                                pupil_diameter, w)
             mask_diffraction_prop.append((reference_wave, expi))
 
         # ++++++++++++++++++++++++++++++++++
