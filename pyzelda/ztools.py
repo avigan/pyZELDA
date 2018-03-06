@@ -308,8 +308,8 @@ def refractive_index(wave, substrate, T=293):
     return n
 
 
-def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate,
-                                       array_dim, pupil_radius, Fratio, wave):
+def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, mask_Fratio,
+                                       array_dim, pupil_radius, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -325,15 +325,15 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     mask_substrate : str
         Mask substrate
 
+    mask_Fratio : float
+        Focal ratio at the mask focal plane
+    
     array_dim : int
         Array dimension (can be larger than the pupil diameter)
         
     pupil_radius : int
         Instrument pupil radius, in pixel
 
-    Fratio : float
-        Focal ratio at the mask focal plane
-    
     wave : float, optional
         Wavelength of the data, in m
     
@@ -358,7 +358,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     n_substrate = refractive_index(wave, mask_substrate)
 
     # R_mask: mask radius in lam0/D unit
-    R_mask = 0.5*d_m / (wave * Fratio)
+    R_mask = 0.5*d_m / (wave * mask_Fratio)
 
     # ++++++++++++++++++++++++++++++++++
     # Dimensions
@@ -407,15 +407,12 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # definition of parameters for the phase estimate with Zernike
 
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    #reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) * \
-    #                 aperture.disc(array_dim, pupil_radius, cpix=True, strict=False)
-
     reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) 
     
     return reference_wave, expi
 
 
-def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diameter, Fratio, wave):
+def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio, pupil_diameter, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -431,12 +428,12 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
     mask_substrate : str
         Mask substrate
 
+    mask_Fratio : float
+        Focal ratio at the mask focal plane
+    
     pupil_diameter : int
         Instrument pupil diameter, in pixel.
 
-    Fratio : float
-        Focal ratio at the mask focal plane
-    
     wave : float, optional
         Wavelength of the data, in m.
     
@@ -453,7 +450,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, pupil_diame
     pupil_radius = pupil_diameter//2
 
     reference_wave, expi = create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, 
-                                                              pupil_diameter, pupil_radius, Fratio, wave)
+                                                              mask_Fratio, pupil_diameter, pupil_radius, wave)
     
     return reference_wave * \
                      aperture.disc(pupil_diameter, pupil_radius, cpix=True, strict=False), expi    
