@@ -75,8 +75,9 @@ class Sensor():
         pupil_full : bool
             Use full telescope pupil
 
-        pupil_function : str
-            Name of function to generate the full telescope pupil
+        pupil_function : str, function
+            Name of function or function to generate the full
+            telescope pupil
 
         detector_width : int
             Detector sub-window width, in pixels
@@ -86,6 +87,7 @@ class Sensor():
 
         detector_origin : tuple (2 int)
             Origin of the detector sub-window, in pixels
+
         '''
 
         self._instrument = instrument
@@ -109,8 +111,11 @@ class Sensor():
             self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'full'))))
             self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'anamorphism')))
 
-            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))            
-            self._pupil_function = eval('aperture.{0}'.format(pupil_function))
+            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))
+            if callable(pupil_function):
+                self._pupil_function = pupil_function
+            else:
+                self._pupil_function = eval('aperture.{0}'.format(pupil_function))
             
             # detector sub-window parameters
             self._width = kwargs.get('detector_width', int(config.get('detector', 'width')))
