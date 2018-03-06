@@ -1,6 +1,3 @@
-# compatibility with python 2.7
-from __future__ import absolute_import, division, print_function
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,15 +16,17 @@ wave = 1.642e-6
 # internal data
 # clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
 # zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
-# dark_file = 'SPHERE_BACKGROUND'
+# dark_file  = 'SPHERE_BACKGROUND'
+# pupil_full = False
 
 # on-sky data
 clear_pupil_files = ['SPHERE_GEN_IRDIS057_0002']
 zelda_pupil_files = ['SPHERE_GEN_IRDIS057_0001']
-dark_file = 'SPHERE_GEN_IRDIS057_0003'
+dark_file  = 'SPHERE_GEN_IRDIS057_0003'
+pupil_full = True
 
 # ZELDA analysis
-z = zelda.Sensor('SPHERE-IRDIS', pupil_full=False)
+z = zelda.Sensor('SPHERE-IRDIS', pupil_full=pupil_full)
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
                                                 collapse_clear=True, collapse_zelda=True)
