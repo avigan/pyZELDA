@@ -337,8 +337,16 @@ class Sensor():
         # Geometrical parameters
         # ++++++++++++++++++++++++++++++++++
         pupil_diameter = self._pupil_diameter
-        R_pupil_pixels = pupil_diameter/2
 
+        # ++++++++++++++++++++++++++++++++++
+        # Pupil
+        # ++++++++++++++++++++++++++++++++++
+        if self._pupil_full:
+            pupil_func = self._pupil_function
+            pup = pupil_func(pupil_diameter)
+        else:
+            pup = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
+        
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
         # ++++++++++++++++++++++++++++++++++
@@ -351,13 +359,14 @@ class Sensor():
 
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
-        # ++++++++++++++++++++++++++++++++++
-        pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=False)
-
+        # ++++++++++++++++++++++++++++++++++        
         print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
 
+        # boolean pupil
+        pup = pup.astype(bool)
+        
         # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
         if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
             raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
