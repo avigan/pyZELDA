@@ -463,7 +463,7 @@ def sphere_irdis_pupil(dim, dead_actuator_diameter=0, spiders=True, spiders_orie
     pup = disc(dim, diameter, diameter=True, strict=False, cpix=True)
 
     # central obscuration and spiders
-    pup -= disc(dim, diameter*obs, center=(dim//2+1.5, dim//2), diameter=True, strict=False, cpix=True)
+    pup *= disc(dim, diameter*obs, center=(dim//2+1.5, dim//2), diameter=True, strict=False, cpix=True, invert=True)
     pup *= spider0
     
     # dead actuators
@@ -489,7 +489,7 @@ if __name__ == "__main__":
     obs  = 0.2
     
     d1 = disc_obstructed(dim, diam, obs, cpix=False, center=(), strict=True)
-    d2 = sphere_pupil(dim, dim, spiders=1)
+    d2 = sphere_irdis_pupil(500)
     
     r, t = coordinates(dim, diam, cpix=False, strict=False, center=(100, 111))
 
