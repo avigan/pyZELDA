@@ -26,16 +26,18 @@ clear_pupil_files = ['SPHERE_GEN_IRDIS057_0002']
 zelda_pupil_files = ['SPHERE_GEN_IRDIS057_0001']
 dark_file = 'SPHERE_GEN_IRDIS057_0003'
 
-
-z = zelda.Sensor('SPHERE-IRDIS', pupil_full=True)
+# ZELDA analysis
+z = zelda.Sensor('SPHERE-IRDIS', pupil_full=False)
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
                                                 collapse_clear=True, collapse_zelda=True)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
 
+# decomposition on Zernike polynomials
 basis, coeff, opd_zern = ztools.zernike_expand(opd_map.mean(axis=0), 20)
 
+# plot
 fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
 ax = fig.add_subplot(141)
@@ -60,12 +62,3 @@ cbar.set_label('OPD [nm]')
 plt.tight_layout()
 plt.show()
 
-
-# Center: 529.95, 513.18
-# ZELDA analysis
-#  * frame 1 / 1
-# Negative values: 24 (0.021%)
-# OPD statistics:
-#  * min = -319.30 nm
-#  * max = 779.71 nm
-#  * std = 47.48 nm
