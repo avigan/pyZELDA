@@ -115,8 +115,11 @@ class Sensor():
             if callable(pupil_function):
                 self._pupil_function = pupil_function
             else:
-                self._pupil_function = eval('aperture.{0}'.format(pupil_function))
-            
+                if pupil_function in dir(aperture):
+                    self._pupil_function = eval('aperture.{0}'.format(pupil_function))
+                else:
+                    self._pupil_function = None
+                    
             # detector sub-window parameters
             self._width = kwargs.get('detector_width', int(config.get('detector', 'width')))
             self._height = kwargs.get('detector_height', int(config.get('detector', 'height')))
@@ -343,6 +346,9 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         if self._pupil_full:
             pupil_func = self._pupil_function
+            if pupil_func is None:
+                raise ValueError('Pupil function is not designed for this sensor')
+            
             pupil = pupil_func(pupil_diameter)
         else:
             pupil = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
