@@ -16,6 +16,7 @@ wave = 1.642e-6
 # internal data
 # clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
 # zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
+
 # dark_file  = 'SPHERE_BACKGROUND'
 # pupil_tel  = False
 
@@ -39,7 +40,7 @@ basis, coeff, opd_zern = ztools.zernike_expand(opd_map.mean(axis=0), 20)
 # plot
 fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
-<<<<<<< HEAD
+
 ax = fig.add_subplot(141)
 ax.imshow(clear_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000, origin=1)
 ax.set_title('Clear pupil')
@@ -61,18 +62,3 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
-=======
-ax = fig.add_subplot(131)
-ax.imshow(clear_pupil, aspect='equal')
-ax.title('Clear pupil')
-
-ax = fig.add_subplot(132)
-ax.imshow(zelda_pupil.mean(axis=0), aspect='equal')
-ax.title('ZELDA pupil')
-
-ax = fig.add_subplot(133)
-ax.imshow(opd_map.mean(axis=0), aspect='equal', vmin=-100, vmax=-100)
-ax.title('OPD map')
-
-plt.tight_layout()
->>>>>>> Added new example SPHERE data
