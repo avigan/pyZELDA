@@ -16,11 +16,18 @@ path = Path('/Users/avigan/Work/GitHub/pyZELDA/data/')
 
 wave = 1.642e-6
 
-clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
-zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
-dark_file = 'SPHERE_BACKGROUND'
+# internal data
+# clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
+# zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
+# dark_file = 'SPHERE_BACKGROUND'
 
-z = zelda.Sensor('SPHERE-IRDIS', pupil_type='full')
+# on-sky data
+clear_pupil_files = ['SPHERE_GEN_IRDIS057_0002']
+zelda_pupil_files = ['SPHERE_GEN_IRDIS057_0001']
+dark_file = 'SPHERE_GEN_IRDIS057_0003'
+
+
+z = zelda.Sensor('SPHERE-IRDIS', pupil_full=True)
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
                                                 collapse_clear=True, collapse_zelda=True)
@@ -52,3 +59,13 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
+
+
+# Center: 529.95, 513.18
+# ZELDA analysis
+#  * frame 1 / 1
+# Negative values: 24 (0.021%)
+# OPD statistics:
+#  * min = -319.30 nm
+#  * max = 779.71 nm
+#  * std = 47.48 nm
