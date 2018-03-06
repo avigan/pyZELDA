@@ -392,6 +392,12 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # sensor mask
     ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_pixels, m1)
 
+    # import matplotlib.pyplot as plt
+    # import matplotlib.colors as colors
+    # plt.figure(figsize=(15, 15))
+    # plt.clf()
+    # plt.imshow(np.abs(ampl_PB_noaberr)**2, norm=colors.LogNorm())
+    
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
     ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
     
