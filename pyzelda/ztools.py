@@ -309,7 +309,7 @@ def refractive_index(wave, substrate, T=293):
 
 
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate,
-                                       pupil_diameter, R_pupil_pixels, Fratio, wave):
+                                       array_dim, R_pupil_pixels, Fratio, wave):
     '''
     Simulate the ZELDA reference wave
 
@@ -317,16 +317,16 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     ----------
 
     mask_diameter : float
-        Mask physical diameter, in m.
+        Mask physical diameter, in m
     
     mask_depth : float
-        Mask physical depth, in m.
+        Mask physical depth, in m
     
     mask_substrate : str
         Mask substrate
 
-    pupil_diameter : int
-        Array size (can be larger than the pupil diameter).
+    array_dim : int
+        Array dimension (can be larger than the pupil diameter)
         
     R_pupil_pixels : int
         Instrument pupil radius, in pixel
@@ -335,7 +335,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
         Focal ratio at the mask focal plane
     
     wave : float, optional
-        Wavelength of the data, in m.
+        Wavelength of the data, in m
     
     Returns
     -------
@@ -379,17 +379,17 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     # definition of m1 parameter for the Matrix Fourier Transform (MFT)
     # here equal to the mask size
-    m1 = 2*R_mask*(pupil_diameter/(2.*R_pupil_pixels))
+    m1 = 2*R_mask*(array_dim/(2.*R_pupil_pixels))
 
     # definition of the electric field in plane A in the absence of aberrations
-    ampl_PA_noaberr = aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
+    ampl_PA_noaberr = aperture.disc(array_dim, R_pupil_pixels, cpix=True, strict=False)
     
     # --------------------------------
     # plane B (Focal plane)
 
     # calculation of the electric field in plane B with MFT within the Zernike
     # sensor mask
-    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, pupil_diameter, D_mask_pixels, m1)
+    ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_pixels, m1)
     
     # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
     ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
@@ -410,10 +410,10 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # definition of parameters for the phase estimate with Zernike
 
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    #reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) * \
-    #                 aperture.disc(pupil_diameter, R_pupil_pixels, cpix=True, strict=False)
+    #reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) * \
+    #                 aperture.disc(array_dim, R_pupil_pixels, cpix=True, strict=False)
 
-    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, pupil_diameter, m1) 
+    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) 
     
     return reference_wave, expi
 
