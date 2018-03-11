@@ -1,6 +1,3 @@
-# compatibility with python 2.7
-from __future__ import absolute_import, division, print_function
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -16,19 +13,30 @@ path = Path('/Users/avigan/Work/GitHub/pyZELDA/data/')
 
 wave = 1.642e-6
 
-clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
-zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
-dark_file = 'SPHERE_BACKGROUND'
+# internal data
+# clear_pupil_files = ['SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3', 'SPHERE_CLEAR_PUPIL_CUBE1_NDIT=3']
+# zelda_pupil_files = ['SPHERE_ZELDA_PUPIL_CUBE1_NDIT=3', 'SPHERE_ZELDA_PUPIL_CUBE2_NDIT=3']
+# dark_file  = 'SPHERE_BACKGROUND'
+# pupil_full = False
 
-z = zelda.Sensor('SPHERE-IRDIS')
+# on-sky data
+clear_pupil_files = ['SPHERE_GEN_IRDIS057_0002']
+zelda_pupil_files = ['SPHERE_GEN_IRDIS057_0001']
+dark_file  = 'SPHERE_GEN_IRDIS057_0003'
+pupil_full = True
+
+# ZELDA analysis
+z = zelda.Sensor('SPHERE-IRDIS', pupil_full=pupil_full)
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
-                                                collapse_clear=False, collapse_zelda=False)
+                                                collapse_clear=True, collapse_zelda=True)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
 
+# decomposition on Zernike polynomials
 basis, coeff, opd_zern = ztools.zernike_expand(opd_map.mean(axis=0), 20)
 
+# plot
 fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
 ax = fig.add_subplot(141)
@@ -52,3 +60,4 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
+

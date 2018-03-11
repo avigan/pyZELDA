@@ -54,6 +54,9 @@ class Sensor():
         instrument by providing any of the following keywords. If none
         is provided, the default value is used.
 
+        mask_Fratio : float
+            Focal ratio at the mask focal plane
+
         mask_depth : float
             Physical depth of the ZELDA mask, in meters
 
@@ -66,17 +69,25 @@ class Sensor():
         pupil_diameter : int
             Pupil diameter on the detector, in pixels
 
-        Fratio : float
-            Focal ratio at the mask focal plane
+        pupil_anamorphism : tuple
+            Pupil anamorphism in the (x,y) directions. Can be None
 
-        width : int
+        pupil_full : bool
+            Use full telescope pupil
+
+        pupil_function : str, function
+            Name of function or function to generate the full
+            telescope pupil
+
+        detector_width : int
             Detector sub-window width, in pixels
 
-        height : int
+        detector_height : int
             Detector sub-window height, in pixels
 
-        origin : tuple (2 int)
+        detector_origin : tuple (2 int)
             Origin of the detector sub-window, in pixels
+
         '''
 
         self._instrument = instrument
@@ -90,23 +101,33 @@ class Sensor():
             config.read(configfile)
 
             # mask physical parameters
+            self._Fratio = kwargs.get('mask_Fratio', float(config.get('mask', 'Fratio')))
             self._mask_depth = kwargs.get('mask_depth', float(config.get('mask', 'depth')))
             self._mask_diameter = kwargs.get('mask_diameter', float(config.get('mask', 'diameter')))
             self._mask_substrate = kwargs.get('mask_substrate', config.get('mask', 'substrate'))
 
-            # instrument parameters
-            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('instrument', 'pupil_diameter')))
-            self._Fratio = kwargs.get('Fratio', float(config.get('instrument', 'Fratio')))
+            # pupil parameters
+            self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'diameter')))
+            self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'full'))))
+            self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'anamorphism')))
 
+            pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))
+            if callable(pupil_function):
+                self._pupil_function = pupil_function
+            else:
+                if pupil_function in dir(aperture):
+                    self._pupil_function = eval('aperture.{0}'.format(pupil_function))
+                else:
+                    self._pupil_function = None
+                    
             # detector sub-window parameters
-            self._width = kwargs.get('width', int(config.get('detector_crop', 'width')))
-            self._height = kwargs.get('height', int(config.get('detector_crop', 'height')))
-            cx = int(config.get('detector_crop', 'origin_x'))
-            cy = int(config.get('detector_crop', 'origin_y'))
+            self._width = kwargs.get('detector_width', int(config.get('detector', 'width')))
+            self._height = kwargs.get('detector_height', int(config.get('detector', 'height')))
+            cx = int(config.get('detector', 'origin_x'))
+            cy = int(config.get('detector', 'origin_y'))
             self._origin = kwargs.get('origin', (cx, cy))
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
-        
     
     ##################################################
     # Properties
@@ -136,6 +157,18 @@ class Sensor():
     def pupil_diameter(self):
         return self._pupil_diameter
 
+    @property
+    def pupil_anamorphism(self):
+        return self._pupil_anamorphism
+    
+    @property
+    def pupil_full(self):
+        return self._pupil_full
+    
+    @property
+    def pupil_function(self):
+        return self._pupil_function
+    
     @property
     def detector_subwindow_width(self):
         return self._width
@@ -250,9 +283,9 @@ class Sensor():
         # Clean and recenter images
         ##############################
         clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
-                                                  center, collapse_clear, self._origin)
+                                                  center, collapse_clear, self._origin, self._pupil_anamorphism)
         zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
-                                                  center, collapse_zelda, self._origin)
+                                                  center, collapse_zelda, self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
     
@@ -307,27 +340,39 @@ class Sensor():
         # Geometrical parameters
         # ++++++++++++++++++++++++++++++++++
         pupil_diameter = self._pupil_diameter
-        R_pupil_pixels = pupil_diameter/2
 
+        # ++++++++++++++++++++++++++++++++++
+        # Pupil
+        # ++++++++++++++++++++++++++++++++++
+        if self._pupil_full:
+            pupil_func = self._pupil_function
+            if pupil_func is None:
+                raise ValueError('Pupil function is not designed for this sensor')
+            
+            pupil = pupil_func(pupil_diameter)
+        else:
+            pupil = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
+        
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
         # ++++++++++++++++++++++++++++++++++
         mask_diffraction_prop = []
         for w in wave:
             reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
-                                                                self._mask_substrate,
-                                                                pupil_diameter, self._Fratio, w)
+                                                                self._mask_substrate, self._Fratio,
+                                                                pupil_diameter, pupil, w)
             mask_diffraction_prop.append((reference_wave, expi))
 
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
-        # ++++++++++++++++++++++++++++++++++
-        pup = aperture.disc(pupil_diameter, R_pupil_pixels, mask=True, cpix=True, strict=False)
-
+        # ++++++++++++++++++++++++++++++++++        
         print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
 
+        # boolean pupil
+        pup = pupil.astype(bool)
+        
         # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
         if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
             raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
@@ -408,7 +453,7 @@ class Sensor():
 
     def mask_phase_shift(self, wave):
         '''
-        compute the phase delay introduced by the mask at a given wavelength
+        Compute the phase delay introduced by the mask at a given wavelength
         
         Parameters
         ----------
@@ -421,13 +466,15 @@ class Sensor():
             the mask phase delay, in radians
         
         '''
+        
         mask_refractive_index = ztools.refractive_index(wave, self.mask_substrate)
-        phase_shift           = 2.*np.pi*(mask_refractive_index-1)*self.mask_depth/wave    
+        phase_shift           = 2.*np.pi*(mask_refractive_index-1)*self.mask_depth/wave
+        
         return phase_shift
         
     def mask_relative_size(self, wave):
         '''
-        compute the relative size of the phase mask in resolution element at wave
+        Compute the relative size of the phase mask in resolution element at wave
         
         Parameters
         ----------
@@ -440,5 +487,7 @@ class Sensor():
             the mask relative size in lam/D
         
         '''
+        
         mask_rel_size = self.mask_diameter/(wave*self.Fratio)
+        
         return mask_rel_size
