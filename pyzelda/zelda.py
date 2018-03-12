@@ -108,7 +108,7 @@ class Sensor():
 
             # pupil parameters
             self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'diameter')))
-            self._pupil_telescope = kwargs.get('pupil_telescope', bool(eval(config.get('pupil', 'full'))))
+            self._pupil_telescope = kwargs.get('pupil_telescope', bool(eval(config.get('pupil', 'telescope'))))
             self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'anamorphism')))
 
             pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))
@@ -344,7 +344,7 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Pupil
         # ++++++++++++++++++++++++++++++++++
-        if self._pupil_full:
+        if self._pupil_telescope:
             pupil_func = self._pupil_function
             if pupil_func is None:
                 raise ValueError('Pupil function is not designed for this sensor')
