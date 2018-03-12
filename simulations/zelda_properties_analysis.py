@@ -77,7 +77,7 @@ max_len = len(max(sensor_list))
 nMask = len(sensor_list)
 z_arr = []
 for i in range(nMask):
-    z_arr.append(zelda.Sensor(sensor_list[i], pupil_full=full_pup_list[i]))
+    z_arr.append(zelda.Sensor(sensor_list[i], pupil_telescope=full_pup_list[i]))
 
 # relative size and phase shift at lam of the mask in lam0/D and radians
 rel_size_vec = []
