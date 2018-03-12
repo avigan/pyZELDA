@@ -72,7 +72,7 @@ class Sensor():
         pupil_anamorphism : tuple
             Pupil anamorphism in the (x,y) directions. Can be None
 
-        pupil_full : bool
+        pupil_telescope : bool
             Use full telescope pupil
 
         pupil_function : str, function
@@ -108,7 +108,7 @@ class Sensor():
 
             # pupil parameters
             self._pupil_diameter = kwargs.get('pupil_diameter', int(config.get('pupil', 'diameter')))
-            self._pupil_full = kwargs.get('pupil_full', bool(eval(config.get('pupil', 'full'))))
+            self._pupil_telescope = kwargs.get('pupil_telescope', bool(eval(config.get('pupil', 'full'))))
             self._pupil_anamorphism = kwargs.get('pupil_anamorphism', eval(config.get('pupil', 'anamorphism')))
 
             pupil_function = kwargs.get('pupil_function', config.get('pupil', 'function'))
@@ -162,8 +162,8 @@ class Sensor():
         return self._pupil_anamorphism
     
     @property
-    def pupil_full(self):
-        return self._pupil_full
+    def pupil_telescope(self):
+        return self._pupil_telescope
     
     @property
     def pupil_function(self):
