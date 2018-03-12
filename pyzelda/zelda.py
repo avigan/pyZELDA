@@ -150,7 +150,7 @@ class Sensor():
         return self._mask_substrate
 
     @property
-    def Fratio(self):
+    def mask_Fratio(self):
         return self._Fratio
 
     @property
@@ -449,6 +449,26 @@ class Sensor():
         opd_nm = zelda_pupil
 
         return opd_nm
+
+    def propagate_opd_map(self, opd_map, wave):
+
+        # ++++++++++++++++++++++++++++++++++
+        # Pupil
+        # ++++++++++++++++++++++++++++++++++
+        if self._pupil_telescope:
+            pupil_func = self._pupil_function
+            if pupil_func is None:
+                raise ValueError('Pupil function is not designed for this sensor')
+            
+            pupil = pupil_func(self._pupil_diameter)
+        else:
+            pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2, mask=True, cpix=True, strict=False)
+
+        zelda_signal = ztools.zelda_propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
+                                self._mask_substrate, self._Fratio,
+                                       self._pupil_diameter, pupil, wave)
+        return zelda_signal
+
     
 
     def mask_phase_shift(self, wave):
