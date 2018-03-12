@@ -421,6 +421,118 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     return reference_wave, expi
 
+def zelda_propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
+                                       pupil_diameter, pupil, wave):
+
+    '''
+    Simulate the ZELDA reference wave
+
+    Parameters
+    ----------
+
+    opd_map : array
+        OPD map, in m
+
+    mask_diameter : float
+        Mask physical diameter, in m
+    
+    mask_depth : float
+        Mask physical depth, in m
+    
+    mask_substrate : str
+        Mask substrate
+
+    mask_Fratio : float
+        Focal ratio at the mask focal plane
+    
+    pupil_diameter : int
+        Instrument pupil diameter, in pixel
+
+    pupil : array
+        Instrument pupil
+
+    wave : float, optional
+        Wavelength of the data, in m
+    
+    Returns
+    -------
+    intensity_PC : array_like
+        Intensity map in the re-imaged pupil plane for a given opd_map
+
+    '''
+   
+    # ++++++++++++++++++++++++++++++++++
+    # Zernike mask parameters
+    # ++++++++++++++++++++++++++++++++++
+
+    # physical diameter and depth, in m
+    d_m = mask_diameter
+    z_m = mask_depth
+
+    # substrate refractive index
+    n_substrate = refractive_index(wave, mask_substrate)
+
+    # R_mask: mask radius in lam0/D unit
+    R_mask = 0.5*d_m / (wave * mask_Fratio)
+
+    # ++++++++++++++++++++++++++++++++++
+    # Dimensions
+    # ++++++++++++++++++++++++++++++++++
+
+    # array and pupil
+    array_dim = pupil.shape[-1]
+    pupil_radius = pupil_diameter//2
+    
+    # mask sampling in the focal plane
+    D_mask_pixels = 300
+
+    # ++++++++++++++++++++++++++++++++++
+    # Numerical simulation part
+    # ++++++++++++++++++++++++++++++++++
+
+    # --------------------------------
+    # plane A (Entrance pupil plane)
+
+    # definition of m1 parameter for the Matrix Fourier Transform (MFT)
+    # here equal to the mask size
+    m1 = 2*R_mask*(array_dim/(2.*pupil_radius))
+
+    # definition of the electric field in plane A in the presence of aberrations
+    ampl_PA = pupil*np.exp(1j*2.*np.pi*opd_map/wave)
+        
+    # --------------------------------
+    # plane B (Focal plane)
+
+    # calculation of the electric field in plane B with MFT within the Zernike
+    # sensor mask
+    ampl_PB = mft.mft(ampl_PA, array_dim, D_mask_pixels, m1)
+    
+    # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
+    ampl_PB *= aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+    
+    
+    # --------------------------------
+    # plane C (Relayed pupil plane)
+
+    # mask phase shift theta (mask in transmission)
+    theta = 2*np.pi*(n_substrate-1)*z_m/wave
+
+    # phasor term associated  with the phase shift
+    expi = np.exp(1j*theta)
+
+    # --------------------------------
+    # definition of parameters for the phase estimate with Zernike
+
+    # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
+    ampl_PC = ampl_PA - (1 - expi)*mft.imft(ampl_PB, D_mask_pixels, array_dim, m1)
+    
+    
+    intensity_PC = np.abs(ampl_PC)**2
+
+    return intensity_PC 
+    
+    
+
 
 def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio, pupil_diameter, pupil, wave):
     '''
