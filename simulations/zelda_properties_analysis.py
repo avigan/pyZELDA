@@ -68,16 +68,16 @@ wave_SPH = 1.642e-6
 wave_SPD = 0.633e-6
 
 # number of mask cases and name
-sensor_list   = ['CLASSIC', 'SPHERE-IRDIS', 'SPHERE-IRDIS']
-full_pup_list = [   False,           False,           True]
-wave_list     = [wave_CLA,        wave_SPH,       wave_SPH]
+sensor_list  = ['CLASSIC', 'SPHERE-IRDIS', 'SPHERE-IRDIS']
+tel_pup_list = [   False,           False,           True]
+wave_list    = [wave_CLA,        wave_SPH,       wave_SPH]
 
 max_len = len(max(sensor_list))
 
 nMask = len(sensor_list)
 z_arr = []
 for i in range(nMask):
-    z_arr.append(zelda.Sensor(sensor_list[i], pupil_telescope=full_pup_list[i]))
+    z_arr.append(zelda.Sensor(sensor_list[i], pupil_telescope=tel_pup_list[i]))
 
 # relative size and phase shift at lam of the mask in lam0/D and radians
 rel_size_vec = []
@@ -110,7 +110,7 @@ for i in range(nMask):
 pup = np.real(aperture.disc(array_dim, R_pupil_pixels, cpix=True, strict=False))
 
 # radial profile of the pupil plane amplitude
-P_vec    = pup[array_dim//2]
+P_vec = pup[array_dim//2]
 
 # Reference wave
 reference_wave_vec = []
@@ -122,11 +122,14 @@ IC0_vec            = []
 IC1_vec            = []
 IC2_vec            = []
 for i in range(nMask):
+    npad = (array_dim - z.pupil_diameter) // 2
+    pup = np.pad(z.pupil, npad, mode='constant')
+
     z = z_arr[i]
     reference_wave, expi = ztools.create_reference_wave_beyond_pupil(z.mask_diameter, 
                                                                      z.mask_depth,
                                                                      z.mask_substrate,
-                                                                     z.Fratio,
+                                                                     z.mask_Fratio,
                                                                      2*R_pupil_pixels,
                                                                      pup,
                                                                      wave_list[i])
@@ -185,7 +188,7 @@ plt.xticks(np.arange(-0.50, 0.51, 0.10))
 plt.yticks(np.arange(0.0, 1.1, 0.1))
 ax.set_color_cycle([cm0(1.*i/(nMask-1)) for i in range(nMask)])
 for i in range(nMask):
-    ax.plot(radius_vec, b_vec[i], label=sensor_list[i])
+    ax.plot(radius_vec, b_vec[i], label='{0} (tel_pup={1:d})'.format(sensor_list[i], z_arr[i].pupil_telescope))
 ax.plot(radius_vec, P_vec, 'k--')
 ax.set_xlim([-0.55, 0.55])
 ax.set_ylim([-0.05, 1.05])
@@ -212,7 +215,7 @@ plt.xticks(np.arange(-0.50, 0.51, 0.10))
 plt.yticks(np.arange(0.0, 4.1, 1.0))
 ax.set_color_cycle([cm0(1.*i/(nMask-1)) for i in range(nMask)])
 for i in range(nMask):
-    ax.plot(wave_vec, IC0_vec[i], label=sensor_list[i])
+    ax.plot(wave_vec, IC0_vec[i], label='{0} (tel_pup={1:d})'.format(sensor_list[i], z_arr[i].pupil_telescope))
 ax.set_xlim([-0.25, 0.45])
 ax.set_ylim([-0.25, 3.75])
 ax.xaxis.set_minor_locator(AutoMinorLocator(2))
