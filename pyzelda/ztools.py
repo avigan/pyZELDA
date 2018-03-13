@@ -422,15 +422,14 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     return reference_wave, expi
 
 
-def zelda_propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                            pupil_diameter, pupil, wave):
+def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
+                      pupil_diameter, pupil, wave):
 
     '''
-    Simulate the ZELDA reference wave
+    Propagate an OPD map through a ZELDA sensor
 
     Parameters
     ----------
-
     opd_map : array
         OPD map, in m
 
@@ -531,8 +530,6 @@ def zelda_propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, 
     intensity_PC = np.abs(ampl_PC)**2
 
     return intensity_PC 
-    
-    
 
 
 def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio, pupil_diameter, pupil, wave):
