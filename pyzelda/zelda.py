@@ -126,6 +126,18 @@ class Sensor():
             cx = int(config.get('detector', 'origin_x'))
             cy = int(config.get('detector', 'origin_y'))
             self._origin = kwargs.get('origin', (cx, cy))
+
+            # create pupil            
+            if self._pupil_telescope:
+                pupil_func = self._pupil_function
+                if pupil_func is None:
+                    raise ValueError('Pupil function is not designed for this sensor')
+
+                self._pupil = pupil_func(self._pupil_diameter)
+            else:
+                self._pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2,
+                                            mask=True, cpix=True, strict=False)
+            
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
     
@@ -168,6 +180,10 @@ class Sensor():
     @property
     def pupil_function(self):
         return self._pupil_function
+
+    @property
+    def pupil(self):
+        return self._pupil
     
     @property
     def detector_subwindow_width(self):
@@ -337,21 +353,10 @@ class Sensor():
         nwave = wave.size
 
         # ++++++++++++++++++++++++++++++++++
-        # Geometrical parameters
-        # ++++++++++++++++++++++++++++++++++
-        pupil_diameter = self._pupil_diameter
-
-        # ++++++++++++++++++++++++++++++++++
         # Pupil
         # ++++++++++++++++++++++++++++++++++
-        if self._pupil_telescope:
-            pupil_func = self._pupil_function
-            if pupil_func is None:
-                raise ValueError('Pupil function is not designed for this sensor')
-            
-            pupil = pupil_func(pupil_diameter)
-        else:
-            pupil = aperture.disc(pupil_diameter, pupil_diameter//2, mask=True, cpix=True, strict=False)
+        pupil_diameter = self._pupil_diameter
+        pupil = self._pupil
         
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
@@ -470,21 +475,10 @@ class Sensor():
             Expected ZELDA signal, in normalized intensity
         '''
         
-        # ++++++++++++++++++++++++++++++++++
-        # Pupil
-        # ++++++++++++++++++++++++++++++++++
-        if self._pupil_telescope:
-            pupil_func = self._pupil_function
-            if pupil_func is None:
-                raise ValueError('Pupil function is not designed for this sensor')
-            
-            pupil = pupil_func(self._pupil_diameter)
-        else:
-            pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2, mask=True, cpix=True, strict=False)
-
+        # propagate OPD map
         zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
                                                 self._mask_substrate, self._Fratio,
-                                                self._pupil_diameter, pupil, wave)
+                                                self._pupil_diameter, self._pupil, wave)
         return zelda_signal
 
 
@@ -525,6 +519,6 @@ class Sensor():
         
         '''
         
-        mask_rel_size = self.mask_diameter/(wave*self.Fratio)
+        mask_rel_size = self.mask_diameter/(wave*self.mask_Fratio)
         
         return mask_rel_size
