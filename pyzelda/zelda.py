@@ -482,9 +482,9 @@ class Sensor():
         else:
             pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2, mask=True, cpix=True, strict=False)
 
-        zelda_signal = ztools.zelda_propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
-                                                      self._mask_substrate, self._Fratio,
-                                                      self._pupil_diameter, pupil, wave)
+        zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
+                                                self._mask_substrate, self._Fratio,
+                                                self._pupil_diameter, pupil, wave)
         return zelda_signal
 
 
