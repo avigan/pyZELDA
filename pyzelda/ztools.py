@@ -421,8 +421,9 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     return reference_wave, expi
 
+
 def zelda_propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                                       pupil_diameter, pupil, wave):
+                            pupil_diameter, pupil, wave):
 
     '''
     Simulate the ZELDA reference wave
