@@ -438,7 +438,7 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
     obs = 1100/8000
 
     # spiders_thickness = 0.008    
-    spdr = 3
+    spdr = 7
     
     # spiders
     if spiders:
@@ -451,43 +451,46 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
         # spiders extension
         ext = (spdr-1) // 2
 
-        sh  = 3
+        sh  = 2
         ref = np.zeros((tdim, tdim))
         ref[cc:, cc-ext+sh:cc+ext+1+sh] = 1
-        spider1 = _rotate_interp(ref, -5.3, (cc, cc+diameter/2))
+        spider1 = _rotate_interp(ref, -5.1, (cc, cc+diameter/2))
 
-        sh  = 0
+        sh  = -2
         ref = np.zeros((tdim, tdim))
         ref[:cc, cc-ext+sh:cc+ext+1+sh] = 1
         spider2 = _rotate_interp(ref, -5.5, (cc, cc-diameter/2))
         
-        sh  = 2
-        ref = np.zeros((tdim, tdim))
-        ref[cc-ext+sh:cc+ext+1+sh, cc:] = 1
-        spider3 = _rotate_interp(ref, 5.5, (cc+diameter/2, cc))
-        
         sh  = 0
         ref = np.zeros((tdim, tdim))
+        ref[cc-ext+sh:cc+ext+1+sh, cc:] = 1
+        spider3 = _rotate_interp(ref, 5.7, (cc+diameter/2, cc))
+        
+        sh  = -1
+        ref = np.zeros((tdim, tdim))
         ref[cc-ext+sh:cc+ext+1+sh, :cc] = 1
-        spider4 = _rotate_interp(ref, 5.5, (cc-diameter/2, cc))
-
-        spider0 = spider1 + spider2 + spider3 + spider4
+        spider4 = _rotate_interp(ref, 5.75, (cc-diameter/2, cc))
 
         spiders_orientation_correction = -1
-        spider0 = _rotate_interp(spider1+spider2+spider3+spider4,
+        spider0 = _rotate_interp(spider1 + spider2 + spider3 + spider4,
                                  45+spiders_orientation+spiders_orientation_correction, (cc, cc))
         
         spider0 = 1 - spider0
         spider0 = spider0[25:-25, 25:-25]
     else:
         spider0 = np.ones(dim)
-
+    
     # main pupil
     pup = disc(dim, diameter, diameter=True, strict=False, cpix=True)
-
+    
     # central obscuration and spiders
-    pup *= disc(dim, diameter*obs, center=(dim//2+1.5, dim//2), diameter=True, strict=False, cpix=True, invert=True)
+    pup *= disc(dim, diameter*obs*1.03, center=(dim//2-0.8, dim//2), diameter=True,
+                strict=False, cpix=True, invert=True)
     pup *= spider0
+
+    # dead actuators on the edges
+    pup[195:275, diameter-20:] = 0
+    pup[120:140, diameter-20:] = 0
     
     # dead actuators
     if dead_actuator_diameter > 0:
