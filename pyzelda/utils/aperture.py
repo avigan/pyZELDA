@@ -489,8 +489,8 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
     pup *= spider0
 
     # dead actuators on the edges
-    pup[195:275, diameter-20:] = 0
-    pup[120:140, diameter-20:] = 0
+    # pup[195:275, diameter-20:] = 0
+    # pup[120:140, diameter-20:] = 0
     
     # dead actuators
     if dead_actuator_diameter > 0:
