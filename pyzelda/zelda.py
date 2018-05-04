@@ -443,9 +443,9 @@ class Sensor():
             # statistics
             if (silent is False):
                 print('OPD statistics:')
-                print(' * min = {0:0.2f} nm'.format(opd_nm.min()))
-                print(' * max = {0:0.2f} nm'.format(opd_nm.max()))
-                print(' * std = {0:0.2f} nm'.format(opd_nm.std()))        
+                print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
+                print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
+                print(' * std = {0:0.2f} nm'.format(opd_nm[pup].std()))        
 
             # save
             zelda_pupil[idx] = opd_nm
