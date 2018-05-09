@@ -38,7 +38,17 @@ freq_cutoff = 100
 
 def import_data(path):
     '''
-    
+    Import new ZELDA monitoring data
+   
+    The data should be organised using a very simple architecture. If
+    the root analysis directory is path/, then the raw data should be
+    in path/raw/ and the results of the analysis will be stored in
+    path/products/
+
+    Parameters
+    ----------
+    path : str or Path
+        Root path for the analysis
     '''
 
     # proper path
@@ -318,7 +328,11 @@ def import_data(path):
     opd_info_full.to_csv(opd_files_db)
 
     
-def plot_iterations(opd_info, series, color):
+def _plot_iterations(opd_info, series, color):
+    '''
+    Utility function for ploting the iterations of the NCPA correction
+    '''
+    
     all_dates = opd_info.index.get_level_values(0).unique()
     for date in all_dates:
         data = opd_info.loc[(date, slice(None)), series]
@@ -327,8 +341,16 @@ def plot_iterations(opd_info, series, color):
                       alpha=0.6, label='')
 
 
-def plot(path, date=None, save=False):
+def plot(path=None, date=None, save=False):
+    '''
+    Plot monitoring data, either on multiple days or at a given date
 
+    Parameters
+    ----------
+    path : str or Path
+        Root path for the analysis
+    '''
+    
     # proper path
     path = Path(path)
 
@@ -368,31 +390,31 @@ def plot(path, date=None, save=False):
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle=':', marker='o', color=color[0],
                       label='Total')
-        # plot_iterations(opd_info, series, color[0])
+        # _plot_iterations(opd_info, series, color[0])
 
         series = 'no_ttf_std'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[1],
                       label='No tip/tilt/focus')
-        plot_iterations(opd_info, series, color[1])
+        _plot_iterations(opd_info, series, color[1])
 
         series = 'no_ttf_LF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[2],
                       label=r'LF ({0}-{1} c/p)'.format(LF[0], LF[1]+1))
-        plot_iterations(opd_info, series, color[2])
+        _plot_iterations(opd_info, series, color[2])
 
         series = 'no_ttf_MF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[3],
                       label=r'MF ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
-        plot_iterations(opd_info, series, color[3])
+        _plot_iterations(opd_info, series, color[3])
 
         series = 'no_ttf_HF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
                       label=r'HF ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
-        plot_iterations(opd_info, series, color[4])
+        _plot_iterations(opd_info, series, color[4])
 
         # specs (without beam-shift)
         plt.axhline(np.sqrt(7.9**2 + 11.6**2 + 32.6**2), color=color[1], linestyle='--', linewidth=2)
