@@ -59,16 +59,25 @@ def import_data(path):
     #
     print('Read and sort new data')
     
-    files = [file.stem for file in path.glob('raw/*.fits')]
+    files = set([file.stem for file in path.glob('raw/*.fits')])
 
     raw_files_db = path / 'products' / 'file_info.csv'
     if raw_files_db.exists():
         info_files = pd.read_csv(raw_files_db, index_col=0)
+
+        # detect new files
+        old_files = set(info_files.index)
+
+        files = files - old_files
     else:
         columns = ('date', 'source', 'nd_cal', 'nd_cpi', 'coro', 'filt',
                    'DIT', 'NDIT')
         info_files = pd.DataFrame(index=files, columns=columns)
-    
+
+    if len(files) == 0:
+        print(' ==> no new data... exiting!')
+        return
+        
     for idx, file in enumerate(files):
         hdr = fits.getheader(path / 'raw' / '{0}.fits'.format(file))
         
@@ -117,10 +126,6 @@ def import_data(path):
     #
     print('Compute new OPD maps')
     
-    # read info
-    info_files = pd.read_csv(path / 'products' / 'file_info.csv',
-                             index_col=[0], header=[0], parse_dates=True)
-
     # pupil
     dim        = 384
     pupil      = aperture.disc(dim, dim, diameter=True, strict=False, cpix=True)
