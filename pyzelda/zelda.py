@@ -2,6 +2,10 @@
 '''
 pyZELDA main module
 
+The pyZELDA package provides facility functions to analyse data from a
+Zernike wavefront sensor, e.g. the ZELDA wavefront sensor implemented
+into VLT/SPHERE
+
 arthur.vigan@lam.fr
 mamadou.ndiaye@oca.eu
 '''
