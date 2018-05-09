@@ -74,6 +74,7 @@ def import_data(path):
                    'DIT', 'NDIT')
         info_files = pd.DataFrame(index=files, columns=columns)
 
+    # exit if there are no new data
     if len(files) == 0:
         print(' ==> no new data... exiting!')
         return
