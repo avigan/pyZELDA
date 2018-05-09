@@ -311,14 +311,24 @@ def _plot_iterations(opd_info, series, color):
                       alpha=0.6, label='')
 
 
-def plot(path=None, date=None, save=False):
-    '''
-    Plot monitoring data, either on multiple days or at a given date
+def plot(path, ndays=60, date=None, save=False):
+    '''Plot monitoring data, either on multiple days or at a given date
 
     Parameters
     ----------
     path : str or Path
         Root path for the analysis
+
+    ndays : int
+        Number of days to plot in the monitoring plot.
+
+    date : str
+        Date in the format YYYY-MM-DD to plot the convergence of the
+        NCPA at a given date
+
+    save : bool
+        Save the plots
+
     '''
     
     # proper path
@@ -395,7 +405,7 @@ def plot(path=None, date=None, save=False):
         last  = all_dates.max() + np.timedelta64(1, 'D')
         # last  = datetime.date(2018, 1, 31)
         # first = datetime.date(2018, 1, 25)
-        first = last - np.timedelta64(60, 'D')
+        first = last - np.timedelta64(ndays, 'D')
         # first = all_dates.min()
 
         plt.xlim(first, last)
@@ -423,7 +433,7 @@ def plot(path=None, date=None, save=False):
             plt.savefig(str(path / 'products' / 'opd_info.pdf'))
     else:
         #
-        # Monitoring on a specific date
+        # NCPA convergence on a specific date
         #
 
         plt.figure(1, figsize=(30, 11))
