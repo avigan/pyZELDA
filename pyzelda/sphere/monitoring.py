@@ -407,19 +407,19 @@ def plot(path, ndays=60, date=None, save=False):
         series = 'no_ttf_LF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[2],
-                      label=r'LF ({0}-{1} c/p)'.format(LF[0], LF[1]+1))
+                      label=r'Low freq. ({0}-{1} c/p)'.format(LF[0], LF[1]+1))
         _plot_iterations(opd_info, series, color[2])
 
         series = 'no_ttf_MF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[3],
-                      label=r'MF ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
+                      label=r'Mid freq. ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
         _plot_iterations(opd_info, series, color[3])
 
         series = 'no_ttf_HF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
-                      label=r'HF ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
+                      label=r'High freq. ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
         _plot_iterations(opd_info, series, color[4])
 
         # specs (without beam-shift)
