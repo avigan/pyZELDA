@@ -82,7 +82,8 @@ def import_data(path, check_pupil_files=True):
         for file in all_files:
             hdr = fits.getheader(path_raw / '{0}.fits'.format(file))
 
-            if hdr['HIERARCH ESO INS1 OPTI2 NAME'] == 'PUPIM':
+            pupim = hdr.get('HIERARCH ESO INS1 OPTI2 NAME', None)
+            if pupim == 'PUPIM':
                 files.append(file)
     else:
         # here we assume that raw files are already sorted
