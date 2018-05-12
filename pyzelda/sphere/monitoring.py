@@ -36,7 +36,7 @@ nzernike    = 30
 freq_cutoff = 100
 
 
-def import_data(path):
+def import_data(path, check_pupil_files=True):
     '''
     Import new ZELDA monitoring data
    
@@ -49,11 +49,18 @@ def import_data(path):
     ----------
     path : str or Path
         Root path for the analysis
+
+    check_pupil_files : bool
+        Check that raw files are all taken in pupil imaging, i.e. that
+        they are actually ZELDA monitoring files. When True, importing
+        new files is significantly slower. Default is True
+
     '''
 
     # proper path
     path = Path(path).expanduser().resolve()
 
+    path_raw     = path / 'raw'
     path_prod    = path / 'products'
     raw_files_db = path_prod / 'file_info.csv'
     opd_files_db = path_prod / 'opd_info.csv'
@@ -65,9 +72,24 @@ def import_data(path):
     # read and sort raw data
     #
     print('Read and sort new data')
-    
-    files = set([file.stem for file in path.glob('raw/*.fits')])
 
+    # list all FITS files
+    all_files = [file.stem for file in path.glob('raw/*.fits')]
+    
+    if check_pupil_files:
+        # select only the ones acquired in pupil imaging
+        files = []
+        for file in all_files:
+            hdr = fits.getheader(path_raw / '{0}.fits'.format(file))
+
+            if hdr['HIERARCH ESO INS1 OPTI2 NAME'] == 'PUPIM':
+                files.append(file)
+    else:
+        # here we assume that raw files are already sorted
+        files = all_files
+    
+    # open or/create database
+    files = set(files)
     if raw_files_db.exists():
         info_files = pd.read_csv(raw_files_db, index_col=0, parse_dates=False)
 
@@ -86,7 +108,7 @@ def import_data(path):
     #     return
     
     for idx, file in enumerate(files):
-        hdr = fits.getheader(path / 'raw' / '{0}.fits'.format(file))
+        hdr = fits.getheader(path_raw / '{0}.fits'.format(file))
         
         # skip already imported data
         if file in info_files.index:
@@ -188,7 +210,7 @@ def import_data(path):
         print()
         
         # read files
-        clear_pupil, zelda_pupils, c = z.read_files(path / 'raw', clear_pupil_file,
+        clear_pupil, zelda_pupils, c = z.read_files(path_raw, clear_pupil_file,
                                                     list(zelda_pupil_files.values),
                                                     dark_file, collapse_clear=True,
                                                     collapse_zelda=False)
