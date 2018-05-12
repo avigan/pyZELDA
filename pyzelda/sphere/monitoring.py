@@ -52,11 +52,15 @@ def import_data(path):
     '''
 
     # proper path
-    path = Path(path)
+    path = Path(path).expanduser().resolve()
 
-    raw_files_db = path / 'products' / 'file_info.csv'
-    opd_files_db = path / 'products' / 'opd_info.csv'
+    path_prod    = path / 'products'
+    raw_files_db = path_prod / 'file_info.csv'
+    opd_files_db = path_prod / 'opd_info.csv'
 
+    if not path_prod.exists():
+        path_prod.mkdir(exist_ok=True)
+    
     #
     # read and sort raw data
     #
