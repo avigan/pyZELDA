@@ -32,7 +32,7 @@ from pathlib import Path
 
 # fixed parameters
 ncpa_n_iter = 5
-nzernike    = 30
+nzernike    = 50
 freq_cutoff = 100
 
 
