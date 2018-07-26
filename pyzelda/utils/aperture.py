@@ -507,6 +507,33 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
     return (pup >= 0.5).astype(int)
 
 
+def sphere_saxo_pupil(dim=240):
+    '''SPHERE pupil in the SAXO geometry
+
+    Parameters
+    ----------
+    dim : int
+        Size of the output array. Default is 384
+    
+    Returns
+    -------
+    pup : array
+        An array containing a disc with the specified parameters
+
+    '''
+
+    # fixed diameter
+    diameter = 240
+
+    if dim < diameter:
+        raise ValueError('Image dimensions cannot be smaller than 384 pixels')
+    
+    # main pupil
+    pup = disc_obstructed(diameter, diameter, 0.14, diameter=True, strict=False, cpix=False)
+    
+    return pup
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
@@ -525,4 +552,3 @@ if __name__ == "__main__":
     plt.imshow(d1, vmin=0, vmax=1, origin=1)
     plt.subplot(122)
     plt.imshow(d2, vmin=0, vmax=1, origin=1)
-
