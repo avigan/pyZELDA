@@ -338,7 +338,7 @@ def _plot_iterations(opd_info, series, color):
                       alpha=0.6, label='')
 
 
-def plot(path, ndays=60, date=None, save=False):
+def plot(path, ndays=60, date=None, fontsize=17, save=False):
     '''Plot monitoring data, either on multiple days or at a given date
 
     Parameters
@@ -353,6 +353,9 @@ def plot(path, ndays=60, date=None, save=False):
         Date in the format YYYY-MM-DD to plot the convergence of the
         NCPA at a given date
 
+    fontsize : float
+        Font size in plot. Default is 17
+
     save : bool
         Save the plots
 
@@ -362,7 +365,7 @@ def plot(path, ndays=60, date=None, save=False):
     path = Path(path)
 
     # plot setup
-    matplotlib.rcParams['font.size'] = 17
+    matplotlib.rcParams['font.size'] = fontsize
     color = [color['color'] for color in list(plt.rcParams['axes.prop_cycle'])]
     
     # opd info
@@ -377,7 +380,7 @@ def plot(path, ndays=60, date=None, save=False):
 
         # compute integration
         LF = ( 1,   3)
-        MF = ( 4,  19)
+        MF = ( 4,  20)
         HF = (20,  99)
 
         freqs = opd_info.loc[:, slice('no_ttf_psd.{0}'.format(LF[0]), 'no_ttf_psd.{0}'.format(LF[1]))].values
@@ -398,7 +401,7 @@ def plot(path, ndays=60, date=None, save=False):
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle=':', marker='o', color=color[0],
                       label='Total')
         # _plot_iterations(opd_info, series, color[0])
-
+        
         series = 'no_ttf_std'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[1],
@@ -417,7 +420,7 @@ def plot(path, ndays=60, date=None, save=False):
                       label=r'Mid freq. ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
         _plot_iterations(opd_info, series, color[3])
 
-        series = 'no_ttf_HF'
+        # series = 'no_ttf_HF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
                       label=r'High freq. ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
