@@ -1044,7 +1044,8 @@ def matrix_process(root, matrix):
 
 def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
                                  nzern=80, filter_cutoff=40, pupil_mask=None,
-                                 turbulence_residuals=False, psd_cutoff=40,
+                                 turbulence_residuals=False,
+                                 psd_compute=True, psd_cutoff=40,
                                  ncpa_sliding_mean=10, save_intermediate=False,
                                  save_product=False, save_ncpa=True, test_mode=True):
     '''Implements the subtraction of the internal turbulence in a long
@@ -1097,6 +1098,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         Compute the turbulence residuals and related statistics. 
         Default is False
     
+    psd_compute : bool
+        Perform all PSD computations. Can be disabled to save time.
+        Default is True.
+
     psd_cutoff : float    
         Spatial frequency cutoff for the calculation of the turbulence
         residuals PSD. Default is 40
@@ -1164,18 +1169,19 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         fits.writeto(root / 'products' / 'turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
     
     # compute PSD of turbulence
-    log.info('Compute PSD of turbulence')    
-    psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+    if psd_compute:
+        log.info('Compute PSD of turbulence')    
+        psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-    # integrate PSD of turbulence
-    psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+        # integrate PSD of turbulence
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-    # save
-    fits.writeto(root / 'products' / 'turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-    fits.writeto(root / 'products' / 'turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save
+        fits.writeto(root / 'products' / 'turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
+        fits.writeto(root / 'products' / 'turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
     
-    # free memory
-    del psd_cube
+        # free memory
+        del psd_cube
     
     # fit turbulence with Zernikes
     if method.lower() == 'zernike':
@@ -1204,18 +1210,19 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
     
     # compute PSD of reconstructed turbulence
-    log.info('Compute PSD of reconstructed turbulence')
-    psd_cube = compute_psd(root, turb_reconstructed, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
-    
-    # integrate PSD of residuals
-    psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+    if psd_compute:
+        log.info('Compute PSD of reconstructed turbulence')
+        psd_cube = compute_psd(root, turb_reconstructed, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-    # save
-    fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-    fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-    # free memory
-    del psd_cube
+        # save
+        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
+        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+
+        # free memory
+        del psd_cube
       
     # compute turbulence residuals
     if turbulence_residuals:
@@ -1227,21 +1234,22 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
             fits.writeto(root / 'products' / 'turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
         
         # compute PSD of residuals
-        log.info('Compute PSD of turbulence residuals')
-        psd_cube = compute_psd(root, turb_residuals, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
-        
-        # free memory 
-        del turb_residuals
+        if psd_compute:
+            log.info('Compute PSD of turbulence residuals')
+            psd_cube = compute_psd(root, turb_residuals, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-        # integrate PSD of residuals
-        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+            # free memory 
+            del turb_residuals
 
-        # save
-        fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
-        
-        # free memory
-        del psd_cube
+            # integrate PSD of residuals
+            psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+            # save
+            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
+            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+
+            # free memory
+            del psd_cube
     
     # free memory
     del turb
@@ -1259,18 +1267,19 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     del turb_reconstructed
     
     # compute PSD of the final sequence
-    log.info('Compute PSD of data without turbulence')
-    psd_cube = compute_psd(root, data_no_turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
-    
-    # integrate PSD of residuals
-    psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+    if psd_compute:
+        log.info('Compute PSD of data without turbulence')
+        psd_cube = compute_psd(root, data_no_turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-    # save
-    fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-    fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
-    
-    # free memory
-    del psd_cube
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save
+        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
+        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+
+        # free memory
+        del psd_cube
 
     # NCPA estimation
     log.info('Compute final NCPA')
@@ -1280,18 +1289,19 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         fits.writeto(root / 'products' / 'ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
     
     # compute PSD of the final sequence
-    log.info('Compute PSD of final NCPA')
-    psd_cube = compute_psd(root, ncpa_cube, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
-    
-    # integrate PSD of residuals
-    psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+    if psd_compute:
+        log.info('Compute PSD of final NCPA')
+        psd_cube = compute_psd(root, ncpa_cube, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-    # save
-    fits.writeto(root / 'products' / 'ncpa_cube_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-    fits.writeto(root / 'products' / 'ncpa_cube_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
-    
-    # free memory
-    del psd_cube
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save
+        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
+        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+
+        # free memory
+        del psd_cube
     
     print()
     log.info('Finished!')
