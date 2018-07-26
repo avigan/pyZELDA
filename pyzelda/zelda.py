@@ -131,7 +131,7 @@ class Sensor():
             cy = int(config.get('detector', 'origin_y'))
             self._origin = kwargs.get('origin', (cx, cy))
 
-            # create pupil            
+            # create pupil
             if self._pupil_telescope:
                 pupil_func = self._pupil_function
                 if pupil_func is None:
