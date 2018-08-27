@@ -537,7 +537,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
 
     Returns
     -------
-    opd_cube : array
+    psd_cube : array
         PSD cubes of the OPD sequence
 
     fft_cube : array (optional)
