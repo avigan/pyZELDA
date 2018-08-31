@@ -105,7 +105,7 @@ def sort_files(root):
         DIT_ms     = np.int(hdr['HIERARCH ESO DET SEQ1 DIT']*1000)
         DIT        = np.timedelta64(DIT_ms, 'ms')
         NDIT       = row.NDIT
-        delta      = (end_time - start_time)/100
+        delta      = (end_time - start_time)/NDIT
 
         timestamp_beg = start_time + delta * np.arange(NDIT)
         timestamp_mid = start_time + delta * np.arange(NDIT) + DIT/2
@@ -537,7 +537,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
 
     Returns
     -------
-    opd_cube : array
+    psd_cube : array
         PSD cubes of the OPD sequence
 
     fft_cube : array (optional)
