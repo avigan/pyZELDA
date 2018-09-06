@@ -16,7 +16,7 @@ import pyzelda.zelda as zelda
 import pandas as pd
 import os
 import astropy.coordinates as coord
-import astropy.units as u
+import astropy.units as units
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import time
@@ -24,12 +24,41 @@ import numpy.fft as fft
 import logging as log
 
 from astropy.io import fits
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 from scipy.stats import pearsonr 
 
 import pyzelda.ztools as ztools
 import pyzelda.utils.aperture as aperture
 import pyzelda.utils.zernike as zernike
+
+
+def parallatic_angle(ha, dec, geolat):
+    '''
+    Parallactic angle of a source in degrees
+
+    Parameters
+    ----------
+    ha : array_like
+        Hour angle, in hours
+
+    dec : float
+        Declination, in degrees
+
+    geolat : float
+        Observatory declination, in degrees
+
+    Returns
+    -------
+    pa : array_like
+        Parallactic angle values
+    '''
+    pa = -np.arctan2(-np.sin(ha),
+                     np.cos(dec) * np.tan(geolat) - np.sin(dec) * np.cos(ha))
+
+    if (dec >= geolat):
+        pa[ha < 0] += 360*units.degree
+    
+    return np.degrees(pa)
 
 
 def sort_files(root):
@@ -67,14 +96,16 @@ def sort_files(root):
         hdr = hdu[0].header
 
         # create data frame
-        info_files.loc[info_files.index[idx], 'file']   = os.path.splitext(os.path.basename(file))[0]
-        info_files.loc[info_files.index[idx], 'source'] = hdr.get('HIERARCH ESO INS4 LAMP1 ST', default=False)
-        info_files.loc[info_files.index[idx], 'nd_cal'] = hdr['HIERARCH ESO INS4 FILT1 NAME']
-        info_files.loc[info_files.index[idx], 'nd_cpi'] = hdr['HIERARCH ESO INS4 FILT2 NAME']
-        info_files.loc[info_files.index[idx], 'coro']   = hdr['HIERARCH ESO INS4 OPTI11 NAME']
-        info_files.loc[info_files.index[idx], 'filt']   = hdr['HIERARCH ESO INS1 FILT NAME']
-        info_files.loc[info_files.index[idx], 'DIT']    = hdr['HIERARCH ESO DET SEQ1 DIT']
-        info_files.loc[info_files.index[idx], 'NDIT']   = hdr['HIERARCH ESO DET NDIT']
+        info_files.loc[info_files.index[idx], 'file']     = os.path.splitext(os.path.basename(file))[0]
+        info_files.loc[info_files.index[idx], 'source']   = hdr.get('HIERARCH ESO INS4 LAMP1 ST', default=False)
+        info_files.loc[info_files.index[idx], 'nd_cal']   = hdr['HIERARCH ESO INS4 FILT1 NAME']
+        info_files.loc[info_files.index[idx], 'nd_cpi']   = hdr['HIERARCH ESO INS4 FILT2 NAME']
+        info_files.loc[info_files.index[idx], 'coro']     = hdr['HIERARCH ESO INS4 OPTI11 NAME']
+        info_files.loc[info_files.index[idx], 'filt']     = hdr['HIERARCH ESO INS1 FILT NAME']
+        info_files.loc[info_files.index[idx], 'DIT']      = hdr['HIERARCH ESO DET SEQ1 DIT']
+        info_files.loc[info_files.index[idx], 'NDIT']     = hdr['HIERARCH ESO DET NDIT']
+        info_files.loc[info_files.index[idx], 'drot_beg'] = hdr['HIERARCH ESO INS4 DROT2 BEGIN']
+        info_files.loc[info_files.index[idx], 'drot_end'] = hdr['HIERARCH ESO INS4 DROT2 END']
 
     # file types
     info_files.loc[np.logical_not(info_files.source), 'type'] = 'B'
@@ -91,7 +122,8 @@ def sort_files(root):
     #
     nframes = int(info_files.loc[info_files.type == 'Z', 'NDIT'].sum())
     columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
-               'time', 'time_start', 'time_end')
+               'time', 'time_start', 'time_end',
+               'drot', 'lst', 'ha', 'pa')
     info_frames = pd.DataFrame(index=range(0, nframes), columns=columns)
 
     index = 0
@@ -99,38 +131,153 @@ def sort_files(root):
         hdu = fits.open(os.path.join(root, 'raw', row.file+'.fits'))
         hdr = hdu[0].header
 
+        # RA/DEC
+        ra_drot = hdr['HIERARCH ESO INS4 DROT2 RA']
+        ra_drot_h = np.floor(ra_drot/1e4)
+        ra_drot_m = np.floor((ra_drot - ra_drot_h*1e4)/1e2)
+        ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
+        ra = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
+
+        dec_drot = hdr['HIERARCH ESO INS4 DROT2 DEC']
+        sign = np.sign(dec_drot)
+        udec_drot  = np.abs(dec_drot)
+        dec_drot_d = np.floor(udec_drot/1e4)
+        dec_drot_m = np.floor((udec_drot - dec_drot_d*1e4)/1e2)
+        dec_drot_s = udec_drot - dec_drot_d*1e4 - dec_drot_m*1e2
+        dec_drot_d *= sign
+        dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
+
+        # observatory location
+        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
+        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
+        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        
         # timestamps
-        start_time = np.datetime64(hdr['DATE-OBS']+'+0000', 'ms')
-        end_time   = np.datetime64(hdr['DATE']+'+0000', 'ms')
-        DIT_ms     = np.int(hdr['HIERARCH ESO DET SEQ1 DIT']*1000)
-        DIT        = np.timedelta64(DIT_ms, 'ms')
+        start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
+        end_time   = Time(hdr['DATE'], location=(geolon, geolat, geoelev))
+        DIT        = TimeDelta(hdr['HIERARCH ESO DET SEQ1 DIT'], format='sec')
         NDIT       = row.NDIT
         delta      = (end_time - start_time)/NDIT
 
-        timestamp_beg = start_time + delta * np.arange(NDIT)
-        timestamp_mid = start_time + delta * np.arange(NDIT) + DIT/2
-        timestamp_end = start_time + delta * np.arange(NDIT) + DIT
+        time_beg = start_time + delta * np.arange(NDIT)
+        time_mid = start_time + delta * np.arange(NDIT) + DIT/2
+        time_end = start_time + delta * np.arange(NDIT) + DIT
 
+        # other useful values
+        start_drot = row.drot_beg
+        end_drot   = row.drot_end
+        delta      = (end_drot - start_drot)/NDIT
+        drot = start_drot + delta * np.arange(NDIT)
+        
+        lst  = time_mid.sidereal_time('apparent')
+        ha   = lst - ra
+        pa   = parallatic_angle(ha, dec, geolat)
+
+        # create data frame
         idx0 = index
         idx1 = index+NDIT-1
 
-        # create data frame
-        info_frames.loc[idx0:idx1, 'file']   = row.file
-        info_frames.loc[idx0:idx1, 'img']    = np.arange(0, NDIT, dtype=int)
-        info_frames.loc[idx0:idx1, 'nd_cal'] = row.nd_cal
-        info_frames.loc[idx0:idx1, 'nd_cpi'] = row.nd_cpi
-        info_frames.loc[idx0:idx1, 'coro']   = row.coro
-        info_frames.loc[idx0:idx1, 'filt']   = row.filt
-        info_frames.loc[idx0:idx1, 'DIT']    = DIT_ms
-        info_frames.loc[idx0:idx1, 'time_start'] = timestamp_beg
-        info_frames.loc[idx0:idx1, 'time']       = timestamp_mid
-        info_frames.loc[idx0:idx1, 'time_end']   = timestamp_end
+        info_frames.loc[idx0:idx1, 'file']       = row.file
+        info_frames.loc[idx0:idx1, 'img']        = np.arange(0, NDIT, dtype=int)
+        info_frames.loc[idx0:idx1, 'nd_cal']     = row.nd_cal
+        info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
+        info_frames.loc[idx0:idx1, 'coro']       = row.coro
+        info_frames.loc[idx0:idx1, 'filt']       = row.filt
+        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'time_start'] = time_beg
+        info_frames.loc[idx0:idx1, 'time']       = time_mid
+        info_frames.loc[idx0:idx1, 'time_end']   = time_end
+
+        info_frames.loc[idx0:idx1, 'lst']        = lst.hour
+        info_frames.loc[idx0:idx1, 'ha']         = ha.hour
+        info_frames.loc[idx0:idx1, 'pa']         = pa
+        info_frames.loc[idx0:idx1, 'drot']         = drot
 
         index += NDIT
 
     # save
     info_frames.to_csv(os.path.join(root, 'products', 'info_frames.csv'))
     
+    #
+    # CLEAR frames information
+    #
+    nframes = int(info_files.loc[info_files.type == 'R', 'NDIT'].sum())
+    columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
+               'drot', 'time', 'time_start', 'time_end')
+    info_frames = pd.DataFrame(index=range(0, nframes), columns=columns)
+
+    index = 0
+    for idx, row in info_files.loc[info_files.type == 'R', :].iterrows():
+        hdu = fits.open(os.path.join(root, 'raw', row.file+'.fits'))
+        hdr = hdu[0].header
+
+        # RA/DEC
+        ra_drot = hdr['HIERARCH ESO INS4 DROT2 RA']
+        ra_drot_h = np.floor(ra_drot/1e4)
+        ra_drot_m = np.floor((ra_drot - ra_drot_h*1e4)/1e2)
+        ra_drot_s = ra_drot - ra_drot_h*1e4 - ra_drot_m*1e2
+        ra = coord.Angle((ra_drot_h, ra_drot_m, ra_drot_s), units.hour)
+
+        dec_drot = hdr['HIERARCH ESO INS4 DROT2 DEC']
+        sign = np.sign(dec_drot)
+        udec_drot  = np.abs(dec_drot)
+        dec_drot_d = np.floor(udec_drot/1e4)
+        dec_drot_m = np.floor((udec_drot - dec_drot_d*1e4)/1e2)
+        dec_drot_s = udec_drot - dec_drot_d*1e4 - dec_drot_m*1e2
+        dec_drot_d *= sign
+        dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
+
+        # observatory location
+        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
+        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
+        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        
+        # timestamps
+        start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
+        end_time   = Time(hdr['DATE'], location=(geolon, geolat, geoelev))
+        DIT        = TimeDelta(hdr['HIERARCH ESO DET SEQ1 DIT'], format='sec')
+        NDIT       = row.NDIT
+        delta      = (end_time - start_time)/NDIT
+
+        time_beg = start_time + delta * np.arange(NDIT)
+        time_mid = start_time + delta * np.arange(NDIT) + DIT/2
+        time_end = start_time + delta * np.arange(NDIT) + DIT
+
+        # other useful values
+        start_drot = row.drot_beg
+        end_drot   = row.drot_end
+        delta      = (end_drot - start_drot)/NDIT
+        drot = start_drot + delta * np.arange(NDIT)
+        
+        lst  = time_mid.sidereal_time('apparent')
+        ha   = lst - ra
+        pa   = parallatic_angle(ha, dec, geolat)
+
+        # create data frame
+        idx0 = index
+        idx1 = index+NDIT-1
+
+        info_frames.loc[idx0:idx1, 'file']       = row.file
+        info_frames.loc[idx0:idx1, 'img']        = np.arange(0, NDIT, dtype=int)
+        info_frames.loc[idx0:idx1, 'nd_cal']     = row.nd_cal
+        info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
+        info_frames.loc[idx0:idx1, 'coro']       = row.coro
+        info_frames.loc[idx0:idx1, 'filt']       = row.filt
+        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'time_start'] = time_beg
+        info_frames.loc[idx0:idx1, 'time']       = time_mid
+        info_frames.loc[idx0:idx1, 'time_end']   = time_end
+
+        info_frames.loc[idx0:idx1, 'lst']        = lst.hour
+        info_frames.loc[idx0:idx1, 'ha']         = ha.hour
+        info_frames.loc[idx0:idx1, 'pa']         = pa
+        info_frames.loc[idx0:idx1, 'drot']         = drot
+
+        index += NDIT
+
+    # save
+    info_frames.to_csv(os.path.join(root, 'products', 'info_frames_ref.csv'))
+
 
 def read_info(root):
     '''Read the files and frames info from disk
@@ -143,13 +290,14 @@ def read_info(root):
     Returns
     -------
     info_files : DataFrame    
-        Data frame with information on all files. If None, the function
-        look for the file in root. Default is None.
+        Data frame with information on all files.
 
-    info_frames : DataFrame    
-        Data frame with information on all frames of all files. If
-        None, the function look for the file in root. Default is None.
+    info_frames : DataFrame
+        Data frame with information on all frames of all files.
 
+    info_frames_ref : DataFrame (optional)
+        Data frame with information on reference frames of all files.
+     
     '''
 
     # read files info
@@ -161,13 +309,19 @@ def read_info(root):
     # read files info
     path = os.path.join(root, 'products', 'info_frames.csv')
     if not os.path.exists(path):
-        raise ValueError('info_frames.csv does not exist in {0}'.format(root))    
+        raise ValueError('info_frames.csv does not exist in {0}'.format(root))
     info_frames = pd.read_csv(path, index_col=0)
 
-    return info_files, info_frames
+    # reference frames info
+    path = os.path.join(root, 'products', 'info_frames_ref.csv')
+    if not os.path.exists(path):
+        raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
+    info_frames_ref = pd.read_csv(path, index_col=0)
+    
+    return info_files, info_frames, info_frames_ref
     
 
-def process(root):
+def process(root, sequence_type='temporal'):
     '''Process a complete sequence of ZELDA data
 
     The processing centers the data and performs the ZELDA analysis to
@@ -177,10 +331,16 @@ def process(root):
     ----------
     root : str
         Root directory where the data is stored
+
+    sequence_type : str
+        Type of sequence. The possible values are temporal, derotator
+        or telescope. The processing of the data will be different
+        depending on the type of the sequence. Default is temporal
+
     '''
 
     # read info
-    info_files, info_frames = read_info(root)
+    info_files, info_frames, info_frames_ref = read_info(root)
     
     # list of files
     clear_pupil_files = info_files.loc[info_files['type'] == 'R', 'file'].values.tolist()
@@ -195,20 +355,74 @@ def process(root):
         
     # read and analyse
     print('ZELDA analysis')
-    for f in range(len(zelda_pupil_files)):
-        print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
-        
-        # read data
-        clear_pupil, zelda_pupils, center = z.read_files(os.path.join(root, 'raw/'), clear_pupil_files,
-                                                         zelda_pupil_files[f], dark_files,
-                                                         collapse_clear=True, collapse_zelda=False)
+    if sequence_type == 'temporal':
+        for f in range(len(zelda_pupil_files)):
+            print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
 
-        # analyse
-        opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
+            # read data
+            clear_pupil, zelda_pupils, center = z.read_files(os.path.join(root, 'raw/'), clear_pupil_files,
+                                                             zelda_pupil_files[f], dark_files,
+                                                             collapse_clear=True, collapse_zelda=False)
 
-        fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
+            # analyse
+            opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
 
-        del opd_cube
+            fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
+
+            del opd_cube
+    elif sequence_type == 'telescope':
+        # determine common center
+        clear_pupil, zelda_pupils, center = z.read_files(os.path.join(root, 'raw/'), clear_pupil_files[0],
+                                                         zelda_pupil_files[0], dark_files,
+                                                         collapse_clear=True, collapse_zelda=True)
+
+        # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
+        for idx, row in info_frames.iterrows():
+            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).idxmin(), :]
+
+            info_frames.loc[idx, 'file_ref'] = ref.file
+            info_frames.loc[idx, 'img_ref']  = ref.img
+
+        sci = None
+        for f in range(len(zelda_pupil_files)):
+            print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
+
+            # read ZELDA pupils
+            if sci != zelda_pupil_files[f]:
+                sci = zelda_pupil_files[f]
+
+                print('  ==> reading ZELDA pupils {}'.format(sci))
+                cp, zelda_pupils, c = z.read_files(os.path.join(root, 'raw/'), clear_pupil_files[0],
+                                                   zelda_pupil_files[f], dark_files,
+                                                   collapse_clear=True, collapse_zelda=False,
+                                                   center=center)
+
+            # read CLEAR pupils
+            opd_cube = np.zeros(zelda_pupils.shape)
+            ref = None
+            for idx, row in info_frames.loc[info_frames.file == zelda_pupil_files[f], :].iterrows():
+                file_ref = row.file_ref
+                img_ref  = int(row.img_ref)
+                img      = int(row.img)
+                
+                if ref != file_ref:
+                    ref = file_ref
+
+                    print('  ==> reading CLEAR pupils {}'.format(ref))
+                    clear_pupil, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
+                                                      zelda_pupil_files[f], dark_files,
+                                                      collapse_clear=False, collapse_zelda=False,
+                                                      center=center)
+            
+                # analyse
+                opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
+            
+            fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
+            del opd_cube
+    elif sequence_type == 'derotator':
+        pass
+    else:
+        raise ValueError('Unknown sequence type {}'.format(sequence_type))
     print()
 
     # merge all cubes    
