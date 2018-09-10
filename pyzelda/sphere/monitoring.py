@@ -380,7 +380,7 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
 
         # compute integration
         LF = ( 1,   3)
-        MF = ( 4,  20)
+        MF = ( 4,  19)
         HF = (20,  99)
 
         freqs = opd_info.loc[:, slice('no_ttf_psd.{0}'.format(LF[0]), 'no_ttf_psd.{0}'.format(LF[1]))].values
@@ -420,7 +420,7 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
                       label=r'Mid freq. ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
         _plot_iterations(opd_info, series, color[3])
 
-        # series = 'no_ttf_HF'
+        series = 'no_ttf_HF'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
                       label=r'High freq. ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
