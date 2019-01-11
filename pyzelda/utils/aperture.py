@@ -489,10 +489,9 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
     pup *= spider0
 
     # dead actuators on the edges
-    # pup[195:275, diameter-20:] = 0
-    pup[100:140, diameter-22:] = 0
-    pup[100:275, diameter-15:] = 0
-    
+    # pup[100:140, diameter-22:] = 0
+    # pup[100:275, diameter-15:] = 0
+
     # dead actuators
     if dead_actuator_diameter > 0:
         xarr = np.array([ 0.1534,  -0.0984, -0.1963,  0.2766,  0.3297])
