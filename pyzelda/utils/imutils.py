@@ -80,7 +80,7 @@ def _shift_interp(array, shift_value, mode='constant', cval=0):
 
 
 def _shift_interp_builtin(array, shift_value, mode='constant', cval=0):
-    shifted = ndimage.shift(array, np.flip(shift_value, 0), order=3, mode=mode, cval=cval)
+    shifted = ndimage.shift(array, np.flipud(shift_value), order=3, mode=mode, cval=cval)
 
     return shifted
 
@@ -744,7 +744,7 @@ def scale(array, scale_value, center=None, new_dim=None, method='fft', mode='con
                           'Switching to method = \'interp\'.')
 
         method = 'interp_builtin'
-        scale_value = np.flip(new_dim, axis=0) / np.array(dims)
+        scale_value = np.flipud(new_dim) / np.array(dims)
 
     # FFT limitations
     if method == 'fft':
