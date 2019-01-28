@@ -102,7 +102,7 @@ class Sensor():
         config = ConfigParser.ConfigParser()
 
         try:
-            config.read(configfile)
+            config.read(str(configfile))
 
             # mask physical parameters
             self._Fratio = kwargs.get('mask_Fratio', float(config.get('mask', 'Fratio')))
