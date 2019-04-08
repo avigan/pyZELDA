@@ -222,7 +222,8 @@ class Sensor():
             List of files that contains the ZELDA pupil data, without the .fits
 
         dark_files : str
-            List of files that contains the dark data, without the .fits
+            List of files that contains the dark data, without the .fits. If None,
+            assumes that the zelda and clear pupil images are already background-subtracted
 
         center : tuple, optional
             Specify the center of the pupil in raw data coordinations.
@@ -275,9 +276,12 @@ class Sensor():
                 raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
                                  'You could use collapse_clear=True.')
 
-        # read dark data	
-        dark = ztools.load_data(path, dark_files, self._width, self._height, self._origin)
-        dark = dark.mean(axis=0)
+        # read dark data
+        if dark_files:
+            dark = ztools.load_data(path, dark_files, self._width, self._height, self._origin)
+            dark = dark.mean(axis=0)
+        else:
+            dark = 0
 
         # read clear pupil data
         clear_pupil = ztools.load_data(path, clear_pupil_files, self._width, self._height, self._origin)
