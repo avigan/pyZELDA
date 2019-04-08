@@ -314,7 +314,7 @@ class Sensor():
         return clear_pupil, zelda_pupil, center
     
 
-    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False):
+    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False, ratio_limit=1):
         '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
 
         Parameters
@@ -335,6 +335,10 @@ class Sensor():
 
         silent : bool, optional
             Remain silent during the data analysis
+
+        ratio_limit : float
+            Percentage of negative pixel above which the analysis is considered as
+            failed. Default value is 1%
 
         Returns
         -------
@@ -431,7 +435,7 @@ class Sensor():
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
-            if (ratio > 1):
+            if (ratio > ratio_limit):
                 raise NameError('Too many negative values in determinant (>1%)')
 
             # replace negative values by 0
