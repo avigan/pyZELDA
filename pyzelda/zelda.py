@@ -276,15 +276,15 @@ class Sensor():
                 raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
                                  'You could use collapse_clear=True.')
 
+        # read clear pupil data
+        clear_pupil = ztools.load_data(path, clear_pupil_files, self._width, self._height, self._origin)
+
         # read dark data
         if dark_files:
             dark = ztools.load_data(path, dark_files, self._width, self._height, self._origin)
             dark = dark.mean(axis=0)
         else:
-            dark = 0
-
-        # read clear pupil data
-        clear_pupil = ztools.load_data(path, clear_pupil_files, self._width, self._height, self._origin)
+            dark = np.zeros((clear_pupil.shape[-2], clear_pupil.shape[-1]))
 
         ##############################
         # Center determination
