@@ -122,7 +122,7 @@ fpath = fdir / fname
 pl.figure(1, figsize = (5,5))
 pl.clf()
 pl.imshow(zelda_pupil[0])
-pl.title('zelda pupil, centered 01')
+pl.title('zelda pupil, ctr 01')
 pl.show()
 if do_pdf:
     pl.savefig(str(fpath), transparent = True)
@@ -134,7 +134,7 @@ fpath = fdir / fname
 pl.figure(2, figsize = (5,5))
 pl.clf()
 pl.imshow(zelda_pupil[1])
-pl.title('zelda pupil, centered 02')
+pl.title('zelda pupil, ctr 02')
 pl.show()
 if do_pdf:
     pl.savefig(str(fpath), transparent = True)
@@ -154,7 +154,7 @@ f2 = pl.figure(10, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
 im = ax0.imshow(opd_map[0], vmin=-3000, vmax=3000)
-ax0.set_title('opd map, wo defocus')
+ax0.set_title('opd map, ctr 01')
 
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
                     wspace=0.02, hspace=0.02)
@@ -180,7 +180,7 @@ f2 = pl.figure(11, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
 im = ax0.imshow(opd_map[1], vmin=-3000, vmax=3000)
-ax0.set_title('opd map, with defocus')
+ax0.set_title('opd map, ctr 02')
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
                     wspace=0.02, hspace=0.02)
 #
@@ -212,7 +212,7 @@ f2 = pl.figure(12, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
 im = ax0.imshow(opd_zern0[0], vmin=-3000, vmax=3000)
-ax0.set_title('opd map, from zernike coefficients - wo defocus')
+ax0.set_title('opd map, from zernike coefficients - ctr 01')
 
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
                     wspace=0.02, hspace=0.02)
@@ -238,7 +238,7 @@ f2 = pl.figure(13, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
 im = ax0.imshow(opd_zern1[0], vmin=-3000, vmax=3000)
-ax0.set_title('opd map, from zernike coefficients - with defocus')
+ax0.set_title('opd map, from zernike coefficients - ctr 02')
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
                     wspace=0.02, hspace=0.02)
 #
@@ -294,8 +294,8 @@ bins = np.linspace(1, 20, 20)
 
 f2 = pl.figure(20, figsize=(8, 4.5))
 pl.clf()
-pl.bar(bins-width0/2, coeff0[0], width=width0, label='wo defocus')
-pl.bar(bins+width0/2, coeff1[0], width=width0, label='with defocus')
+pl.bar(bins-width0/2, coeff0[0], width=width0, label='ctr 01')
+pl.bar(bins+width0/2, coeff1[0], width=width0, label='ctr 02')
 pl.xticks(bins)
 pl.xlabel('Zernike modes')
 pl.ylabel('wavefront error in nm rms')
