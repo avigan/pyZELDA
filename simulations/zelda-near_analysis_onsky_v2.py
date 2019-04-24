@@ -67,8 +67,11 @@ clear_pupil = clear_pupil_init[xi:xf,yi:yf]
 zelda_pupil = zelda_pupil_init[xi:xf,yi:yf]
 bckgd_pupil = bckgd_pupil_init[xi:xf,yi:yf]
 
-clear_pupil = [clear_pupil-bckgd_pupil]
-zelda_pupil = [zelda_pupil-bckgd_pupil]
+near_pupil = zelda.aperture.visir_near_pupil(dim=356)
+dark = bckgd_pupil[near_pupil == 1.].mean()
+
+clear_pupil = [clear_pupil-dark]
+zelda_pupil = [zelda_pupil-dark]
 
 clear_pupil = np.asarray(clear_pupil)
 zelda_pupil = np.asarray(zelda_pupil)
@@ -81,18 +84,6 @@ zelda_pupil = np.asarray(zelda_pupil)
 wave = 11.25e-6
 
 do_pdf = True
-
-#%%
-"""
-### Generate near pupil
-"""
-near_pupil = zelda.aperture.visir_near_pupil(nPup)
-
-pl.figure(1)
-pl.clf()
-pl.imshow(near_pupil)
-pl.show()
-
 
 #%%
 """
@@ -150,7 +141,7 @@ fpath = fdir / fname
 f2 = pl.figure(10, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
-im = ax0.imshow(opd_map[0], vmin=-3000, vmax=3000)
+im = ax0.imshow(opd_map[0], vmin=-300, vmax=300)
 ax0.set_title('opd map')
 
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
@@ -182,7 +173,7 @@ fpath = fdir / fname
 f2 = pl.figure(12, figsize = (6,4.5))
 pl.clf()
 ax0 = f2.add_subplot(111)
-im = ax0.imshow(opd_zern0[0], vmin=-3000, vmax=3000)
+im = ax0.imshow(opd_zern0[0], vmin=-300, vmax=300)
 ax0.set_title('opd map, from zernike coefficients - ctr 01')
 
 f2.subplots_adjust(bottom=0.13, top=0.87, left=0.1, right=0.75,
@@ -228,75 +219,3 @@ if do_pdf:
 
 pl.show()
 pl.tight_layout()
-
-#%%
-pupil00 = zelda.aperture.vlt_pupil(nPup, nPup, 
-                                   spiders_orientation=0,  
-                                   dead_actuators=[],
-                                   dead_actuator_diameter=0.)
-
-
-pupilm3 = zelda.aperture.vlt_pupil(nPup, nPup, 
-                                   spiders_orientation=97,  
-                                   dead_actuators=[],
-                                   dead_actuator_diameter=0.)
-
-pl.figure(30)
-pl.clf()
-pl.imshow(pupilm3*clear_pupil[0])
-pl.show()
-
-#%%
-x = (2/nPup)*(np.arange(nPup)-nPup/2)
-y = (2/nPup)*(np.arange(nPup)-nPup/2)
-
-xx, yy = np.meshgrid(x, y)
-
-indx0 = xx <= -0.11
-indx1 = xx >= 0.11
-
-xx1 = np.ones((nPup, nPup))
-xx1[indx0] = 0.
-xx1[indx1] = 0.
-
-indy0 = yy <= 0.0
-indy1 = yy >= 0.22
-
-yy1 = np.ones((nPup, nPup))
-yy1[indy0] = 0.
-yy1[indy1] = 0.
-
-tt1 = xx1*yy1
-
-
-#%%
-angle = -39
-tt2 = rotate(tt1, angle)
-
-dim = np.shape(tt2)[0]
-tt3 = tt2[dim//2-nPup//2:dim//2+nPup//2, dim//2-nPup//2:dim//2+nPup//2]
-tt3 = np.round(tt3)
-
-#%%
-
-pupil11 = pupil00*(1-tt3)
-pupil12 = rotate(pupil11, 97)
-dimb = np.shape(pupil12)[0]
-pupil13 = pupil12[dimb//2-nPup//2:dimb//2+nPup//2, dimb//2-nPup//2:dimb//2+nPup//2]
-pupil13 = np.round(pupil13) 
-
-pl.figure(30)
-pl.clf()
-pl.imshow(pupil13)
-pl.show()
-
-
-pl.figure(31)
-pl.clf()
-pl.imshow(clear_pupil[0]*pupil13)
-pl.show()
-
-
-fname = 'vlt_pupil_near.fits'
-fpath = fdir / fname
-fits.writeto(fpath, pupil13)
