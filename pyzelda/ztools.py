@@ -417,7 +417,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # definition of parameters for the phase estimate with Zernike
 
     # b1 = reference_wave: parameter corresponding to the wave diffracted by the mask in the relayed pupil
-    reference_wave = norm_ampl_PC_noaberr * mft.mft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) 
+    reference_wave = norm_ampl_PC_noaberr * mft.imft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1) 
 
     return reference_wave, expi
 
