@@ -306,14 +306,112 @@ class Sensor():
         ##############################
         # Clean and recenter images
         ##############################
-        clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
+        clear_pupil = ztools.recentred_data_files(path, clear_pupil_files, dark, self._pupil_diameter,
                                                   center, collapse_clear, self._origin, self._pupil_anamorphism)
-        zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
+        zelda_pupil = ztools.recentred_data_files(path, zelda_pupil_files, dark, self._pupil_diameter,
                                                   center, collapse_zelda, self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
     
 
+    def process_frames(self, clear_pupil, zelda_pupil, center=(), center_method='fit',
+                       collapse_clear=False, collapse_zelda=False):
+        '''
+        Alternative to read_files(): use already loaded data to generate
+        the clear_pupil and zelda_pupil. The images must already be 
+        dark-subtracted.
+
+        Parameters
+        ----------
+        clear_pupil : array
+            Cube of frames that contain the clear pupil data
+
+        zelda_pupil : str
+            Cube of frames that contain the ZELDA pupil data
+
+        center : tuple, optional
+            Specify the center of the pupil in raw data coordinations.
+            Default is '()', i.e. the center will be determined by the routine
+
+        center_method : str, optional
+            Method to be used for finding the center of the pupil:
+             - 'fit': least squares circle fit (default)
+             - 'com': center of mass
+
+        collapse_clear : bool
+            Collapse the clear pupil images. Default is False
+
+        collapse_zelda : bool
+            Collapse the zelda pupil images. Default is False
+
+        Returns
+        -------
+        clear_pupil : array_like
+            Array containing the collapsed clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        c : vector_like
+            Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
+        '''
+
+        ##############################
+        # Deal with files
+        ##############################
+
+        # read number of frames
+        nframes_clear = len(clear_pupil)
+        nframes_zelda = len(zelda_pupil)
+
+        print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+        print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+
+        # make sure we have compatible data sets
+        if (nframes_zelda == 1) or collapse_zelda:
+            if nframes_clear != 1:
+                collapse_clear = True
+                print(' * automatic collapse of clear pupil to match ZELDA data')
+        else:
+            if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
+                raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
+                                 'You could use collapse_clear=True.')
+
+        # make sure we have cubes
+        if clear_pupil.ndim == 2:
+            clear_pupil = clear_pupil[np.newaxis, ...]
+
+        if zelda_pupil.ndim == 2:
+            zelda_pupil = zelda_pupil[np.newaxis, ...]
+            
+        ##############################
+        # Center determination
+        ##############################
+
+        # collapse clear pupil image
+        clear_pupil_collapse = clear_pupil.mean(axis=0, keepdims=True)
+
+        # subtract background and correct for bad pixels
+        clear_pupil_collapse = imutils.sigma_filter(clear_pupil_collapse.squeeze(), box=5, nsigma=3, iterate=True)
+
+        # search for the pupil center
+        if len(center) == 0:
+            center = ztools.pupil_center(clear_pupil_collapse, center_method)
+        elif len(center) != 2:
+            raise ValueError('Error, you must pass 2 values for center')
+
+        ##############################
+        # Clean and recenter images
+        ##############################
+        # FIXME: clear_pupil and zelda_pupil are not recentered yet
+        # clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
+        #                                           center, collapse_clear, self._origin, self._pupil_anamorphism)
+        # zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
+        #                                           center, collapse_zelda, self._origin, self._pupil_anamorphism)
+
+        return clear_pupil, zelda_pupil, center
+    
+    
     def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False, ratio_limit=1):
         '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
 
