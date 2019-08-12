@@ -152,7 +152,7 @@ def pupil_center(clear_pupil, center_method):
     return c
 
 
-def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin, anamorphism):
+def recentred_data_files(path, data_files, dark, dim, center, collapse, origin, anamorphism):
     '''
     Read data cubes from disk and recenter them
 
