@@ -314,12 +314,12 @@ class Sensor():
         return clear_pupil, zelda_pupil, center
     
 
-    def process_frames(self, clear_pupil, zelda_pupil, center=(), center_method='fit',
-                       collapse_clear=False, collapse_zelda=False):
+    def process_cubes(self, clear_pupil, zelda_pupil, center=(), center_method='fit',
+                      collapse_clear=False, collapse_zelda=False):
         '''
-        Alternative to read_files(): use already loaded data to generate
-        the clear_pupil and zelda_pupil. The images must already be 
-        dark-subtracted.
+        Alternative to read_files(): use already loaded data cubes to
+        generate the clear_pupil and zelda_pupil. The images must
+        already be dark-subtracted.
 
         Parameters
         ----------
