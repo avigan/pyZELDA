@@ -261,14 +261,11 @@ def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
     cint = center.astype(np.int)
     cc   = dim//2
 
-    # determine total number of frames
-    nframes_total = len(cube)
-
+    # extract useful data
     ext = 10
-    data_cube = np.empty((nframes_total, dim+2*ext, dim+2*ext))
-    data_cube[:, 
-              origin[1]+cint[1]-cc-ext:origin[1]+cint[1]+cc+ext,
-              origin[0]+cint[0]-cc-ext:origin[0]+cint[0]+cc+ext] = cube
+    data_cube = cube[:, 
+                     origin[1]+cint[1]-cc-ext:origin[1]+cint[1]+cc+ext,
+                     origin[0]+cint[0]-cc-ext:origin[0]+cint[0]+cc+ext]
     
     del cube
 

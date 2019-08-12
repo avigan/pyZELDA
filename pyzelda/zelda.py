@@ -399,7 +399,7 @@ class Sensor():
             center = ztools.pupil_center(clear_pupil_collapse, center_method)
         elif len(center) != 2:
             raise ValueError('Error, you must pass 2 values for center')
-
+        
         ##############################
         # Clean and recenter images
         ##############################
