@@ -403,11 +403,10 @@ class Sensor():
         ##############################
         # Clean and recenter images
         ##############################
-        # FIXME: clear_pupil and zelda_pupil are not recentered yet
-        # clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
-        #                                           center, collapse_clear, self._origin, self._pupil_anamorphism)
-        # zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
-        #                                           center, collapse_zelda, self._origin, self._pupil_anamorphism)
+        clear_pupil = ztools.recentred_data_cubes(clear_pupil, self._pupil_diameter, center, collapse_clear, 
+                                                  self._origin, self._pupil_anamorphism)
+        zelda_pupil = ztools.recentred_data_cubes(zelda_pupil, self._pupil_diameter, center, collapse_zelda, 
+                                                  self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
     

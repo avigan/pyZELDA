@@ -232,6 +232,65 @@ def recentred_data_files(path, data_files, dark, dim, center, collapse, origin, 
     return data_cube
 
 
+def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
+    '''
+    Recenter already loaded data cubes
+
+    Parameters
+    ----------
+    cube : array
+        Data cube
+
+    dim : int, optional
+        Size of the final arrays
+
+    center : vector_like
+        Center of the pupil in the images
+
+    collapse : bool
+        Collapse or not the cubes
+    
+    origin : tuple
+        Origin point of the detector window to be extracted in the raw files
+
+    anamorphism : tuple
+        Pupil anamorphism. If not None, it must be a 2-elements tuple
+        with the scaling to apply along the x and y
+    '''
+    center = np.array(center)
+    cint = center.astype(np.int)
+    cc   = dim//2
+
+    # determine total number of frames
+    nframes_total = len(cube)
+
+    ext = 10
+    data_cube = np.empty((nframes_total, dim+2*ext, dim+2*ext))
+    data_cube[:, 
+              origin[1]+cint[1]-cc-ext:origin[1]+cint[1]+cc+ext,
+              origin[0]+cint[0]-cc-ext:origin[0]+cint[0]+cc+ext] = cube
+    
+    del cube
+
+    # collapse if needed
+    if collapse:
+        data_cube = data_cube.mean(axis=0, keepdims=True)
+
+    # clean and recenter images
+    for idx, img in enumerate(data_cube):
+        img = imutils.sigma_filter(img, box=5, nsigma=3, iterate=True)
+        img = imutils.shift(img, cint-center)
+
+        if anamorphism is not None:
+            img = imutils.scale(img, anamorphism, method='interp', center=(cc+ext, cc+ext))
+        
+        data_cube[idx] = img
+    
+    data_cube = data_cube[:, ext:dim+ext, ext:dim+ext]
+    
+    return data_cube
+
+
 def refractive_index(wave, substrate, T=293):
     '''
     Compute the refractive index of a subtrate at a given wavelength, 
