@@ -480,7 +480,8 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
         # ++++++++++++++++++++++++++++++++++        
-        print('ZELDA analysis')
+        if not silent:
+            print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
 
@@ -495,7 +496,8 @@ class Sensor():
             raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
 
         for idx in range(nframes_zelda):
-            print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
+            if not silent:
+                print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
 
             # normalization
             if nframes_clear == 1:
@@ -528,7 +530,7 @@ class Sensor():
             neg_count  = neg_values.sum()
             ratio = neg_count / pup.sum() * 100
 
-            if (silent is False):
+            if not silent:
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
@@ -550,7 +552,7 @@ class Sensor():
             opd_nm[pup] -= opd_nm[pup].mean()
             
             # statistics
-            if (silent is False):
+            if not silent:
                 print('OPD statistics:')
                 print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
                 print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
