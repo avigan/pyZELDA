@@ -92,6 +92,9 @@ class Sensor():
         detector_origin : tuple (2 int)
             Origin of the detector sub-window, in pixels
 
+        silent : bool
+            Control output. Default is False
+
         '''
 
         self._instrument = instrument
@@ -142,6 +145,8 @@ class Sensor():
                 self._pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2,
                                             mask=True, cpix=True, strict=False)
             
+            self._silent = kwargs.get('silent', False)
+                
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
     
@@ -201,6 +206,14 @@ class Sensor():
     def detector_subwindow_origin(self):
         return self._origin
 
+    @property
+    def silent(self):
+        return self._silent
+    
+    @silent.setter
+    def silent(self, status):
+        self._silent = bool(status)
+    
     ##################################################
     # Methods
     ##################################################
@@ -263,14 +276,16 @@ class Sensor():
         nframes_clear = ztools.number_of_frames(path, clear_pupil_files)	
         nframes_zelda = ztools.number_of_frames(path, zelda_pupil_files)	
 
-        print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
-        print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+        if not self.silent:
+            print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+            print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
 
         # make sure we have compatible data sets
         if (nframes_zelda == 1) or collapse_zelda:
             if nframes_clear != 1:
                 collapse_clear = True
-                print(' * automatic collapse of clear pupil to match ZELDA data')
+                if not self.silent:
+                    print(' * automatic collapse of clear pupil to match ZELDA data')
         else:
             if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
                 raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
@@ -364,14 +379,16 @@ class Sensor():
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
 
-        print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
-        print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+        if not self.silent:
+            print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+            print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
 
         # make sure we have compatible data sets
         if (nframes_zelda == 1) or collapse_zelda:
             if nframes_clear != 1:
                 collapse_clear = True
-                print(' * automatic collapse of clear pupil to match ZELDA data')
+                if not self.silent:
+                    print(' * automatic collapse of clear pupil to match ZELDA data')
         else:
             if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
                 raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
@@ -411,7 +428,7 @@ class Sensor():
         return clear_pupil, zelda_pupil, center
     
     
-    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False, ratio_limit=1):
+    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1):
         '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
 
         Parameters
@@ -429,9 +446,6 @@ class Sensor():
             If set to True, the OPD maps are saved inside the zelda_pupil
             array to save memory. Otherwise, a distinct OPD array is
             returned. Do not use if you're not a ZELDA High Master :-)
-
-        silent : bool, optional
-            Remain silent during the data analysis
 
         ratio_limit : float
             Percentage of negative pixel above which the analysis is considered as
@@ -480,7 +494,7 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
         # ++++++++++++++++++++++++++++++++++        
-        if not silent:
+        if not self.silent:
             print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
@@ -496,7 +510,7 @@ class Sensor():
             raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
 
         for idx in range(nframes_zelda):
-            if not silent:
+            if not self.silent:
                 print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
 
             # normalization
@@ -530,7 +544,7 @@ class Sensor():
             neg_count  = neg_values.sum()
             ratio = neg_count / pup.sum() * 100
 
-            if not silent:
+            if not self.silent:
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
@@ -552,7 +566,7 @@ class Sensor():
             opd_nm[pup] -= opd_nm[pup].mean()
             
             # statistics
-            if not silent:
+            if not self.silent:
                 print('OPD statistics:')
                 print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
                 print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
