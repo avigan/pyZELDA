@@ -146,8 +146,6 @@ def pupil_center(clear_pupil, center_method):
         c = np.roll(c, 1)
     else:
         raise NameError('Unkown centring method '+center_method)
-
-    print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
         
     return c
 
