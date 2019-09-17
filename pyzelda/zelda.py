@@ -149,6 +149,11 @@ class Sensor():
                 
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
+        
+        # dictionary to save mask diffraction properties: speed-up the
+        # analysis when multiple analyses are performed at the same
+        # wavelength with the same Sensor object
+        self._mask_diffraction_prop = {}
     
     ##################################################
     # Properties
@@ -484,12 +489,13 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
         # ++++++++++++++++++++++++++++++++++
-        mask_diffraction_prop = []
+        keys = self._mask_diffraction_prop.keys()
         for w in wave:
-            reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
-                                                                self._mask_substrate, self._Fratio,
-                                                                pupil_diameter, pupil, w)
-            mask_diffraction_prop.append((reference_wave, expi))
+            if w not in keys:
+                reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                    self._mask_substrate, self._Fratio,
+                                                                    pupil_diameter, pupil, w)
+                self._mask_diffraction_prop[w] = (reference_wave, expi)
 
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
@@ -526,12 +532,10 @@ class Sensor():
             #  - [1] dephasing term
             if nwave == 1:
                 cwave = wave[0]
-                reference_wave = mask_diffraction_prop[0][0]
-                expi = mask_diffraction_prop[0][1]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
             else:
                 cwave = wave[idx]
-                reference_wave = mask_diffraction_prop[idx][0]
-                expi = mask_diffraction_prop[idx][1]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
 
             # determinant calculation
             delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
