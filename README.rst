@@ -4,7 +4,7 @@ pyZELDA
 Introduction
 ------------
 
-This repository provides analysis code for Zernike wavefront sensor in high-contrast imaging applications.
+This repository provides analysis code for Zernike wavefront sensors in high-contrast imaging applications. ZELDA stands for *Zernike sensor for Extremely Low-level Differential Aberration* `(N'Diaye et al. 2013) <https://ui.adsabs.harvard.edu/#abs/2013A&A...555A..94N/abstract>`_. It is also the name of the Zernike wavefront sensor implemented in the VLT/SPHERE (`Beuzit et al. 2019 <https://ui.adsabs.harvard.edu/abs/2019arXiv190204080B/abstract>`_) instrument.
 
 Authors
 -------
@@ -15,12 +15,14 @@ Authors
 Citation
 --------
 
-If you use this software or part it, please reference the code from the `Astrophysics Source Code Library (ASCL) <http://ascl.net/>`_:
+If you use this software, or part it, please reference the code from the `Astrophysics Source Code Library (ASCL) <http://ascl.net/>`_:
 
 `Vigan & N'Diaye, 2018, ascl:1806.003 <https://ui.adsabs.harvard.edu/abs/2018ascl.soft06003V/abstract>`_
   
 References
 ----------
+
+The following papers present the formalism of the Zernike wavefront sensor as well as demonstration of its capabilities in the VLT/SPHERE instrument:
 
 - `N'Diaye, Dohlen, Fusco & Paul, 2013, A&A, 555, A94 <https://ui.adsabs.harvard.edu/#abs/2013A&A...555A..94N/abstract>`_
 - `N'Diaye, Vigan, Dohlen et al., 2016, A&A, 592, A79 <https://ui.adsabs.harvard.edu/#abs/2016A&A...592A..79N/abstract>`_
