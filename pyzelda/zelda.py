@@ -662,7 +662,7 @@ class Sensor():
         return opd_nm
 
     
-    def propagate_opd_map(self, opd_map, wave):
+    def propagate_opd_map(self, opd_map, wave, corono=0):
         '''
         Propagate an OPD map through a ZELDA sensor
 
@@ -675,6 +675,9 @@ class Sensor():
         wave : float
             Wavelength, in meter
 
+        corono : float, optional. The size in lambda/D of the Lyot FPM.
+            If set to 0, no FPM propagation will be used. 
+
         Returns
         -------
         zelda_signal : array
@@ -684,7 +687,7 @@ class Sensor():
         # propagate OPD map
         zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
                                                 self._mask_substrate, self._Fratio,
-                                                self._pupil_diameter, self._pupil, wave)
+                                                self._pupil_diameter, self._pupil, wave, corono=corono)
         return zelda_signal
 
 

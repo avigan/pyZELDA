@@ -19,6 +19,7 @@ import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 import pyzelda.utils.zernike as zernike
 import pyzelda.utils.prof as prof
+import matplotlib.pyplot as plt
 
 
 def number_of_frames(path, data_files):
@@ -477,7 +478,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
 
 def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                      pupil_diameter, pupil, wave):
+                      pupil_diameter, pupil, wave, corono=0):
 
     '''
     Propagate an OPD map through a ZELDA sensor
@@ -508,6 +509,10 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
     wave : float, optional
         Wavelength of the data, in m
     
+    corono : float, optional
+    	Size of the coronagraph Focal Plane Mask (FPM) placed before
+    	ZELDA wavefront sensor, in lambda/D. Default is 0 (no mask).
+
     Returns
     -------
     intensity_PC : array_like
@@ -553,6 +558,24 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
 
     # definition of the electric field in plane A in the presence of aberrations
     ampl_PA = pupil*np.exp(1j*2.*np.pi*opd_map/wave)
+
+    # Coronagraph FPM filter
+    if corono:
+        ampl_PAb = mft.mft(ampl_PA, array_dim, D_mask_pixels, corono)
+        plt.figure()
+        plt.imshow(abs(ampl_PAb))
+        plt.colorbar()
+        # Multiplication by the Lyot mask
+        ampl_PAc = ampl_PAb *  aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+        plt.figure()
+        plt.imshow(abs(ampl_PAc))
+        plt.colorbar()
+        # Going back to initial pupil plane
+        ampl_PA = mft.imft(ampl_PAc, D_mask_pixels, array_dim, corono)
+        plt.figure()
+        plt.imshow(np.angle(ampl_PA)*aperture.disc(430, 430, diameter=True, cpix=True, strict=False))
+        plt.colorbar()
+        plt.show()
         
     # --------------------------------
     # plane B (Focal plane)
