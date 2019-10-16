@@ -134,7 +134,7 @@ class Sensor():
 
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
-
+            
         # dictionary to save mask diffraction properties: speed-up the
         # analysis when multiple analyses are performed at the same
         # wavelength with the same Sensor object
@@ -395,7 +395,7 @@ class Sensor():
                                                   self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
-
+    
     def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1, use_arbitrary_amplitude=False,
                 pupil_roi=np.array([]), cpix=False, sign_mask=np.array([]), refwave_from_clear=False):
 
@@ -662,7 +662,7 @@ class Sensor():
         return opd_nm
 
     
-    def propagate_opd_map(self, opd_map, wave, corono=0):
+    def propagate_opd_map(self, opd_map, wave):
         '''
         Propagate an OPD map through a ZELDA sensor
 
@@ -675,9 +675,6 @@ class Sensor():
         wave : float
             Wavelength, in meter
 
-        corono : float, optional. The size in lambda/D of the Lyot FPM.
-            If set to 0, no FPM propagation will be used. 
-
         Returns
         -------
         zelda_signal : array
@@ -687,7 +684,7 @@ class Sensor():
         # propagate OPD map
         zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
                                                 self._mask_substrate, self._Fratio,
-                                                self._pupil_diameter, self._pupil, wave, corono=corono)
+                                                self._pupil_diameter, self._pupil, wave)
         return zelda_signal
 
 
