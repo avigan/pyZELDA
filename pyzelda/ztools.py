@@ -364,7 +364,7 @@ def refractive_index(wave, substrate, T=293):
 
 
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                                       pupil_diameter, pupil, wave):
+                                       pupil_diameter, pupil, wave, corono=0):
     '''
     Simulate the ZELDA reference wave
 
@@ -391,6 +391,9 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     wave : float, optional
         Wavelength of the data, in m
+
+    corono : float, optional
+        Diameter in lambda/D of the FPM before the ZELDA wfs.
     
     Returns
     -------
@@ -439,6 +442,16 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     # definition of the electric field in plane A in the absence of aberrations
     ampl_PA_noaberr = pupil
+
+    # FPM step
+    if corono:
+        ampl_PAb_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_pixels, corono)
+
+        # Multiplying by the transmission of the FPM
+        ampl_PAc_noaberr = ampl_PAb_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+
+        # Coming back to ZELDA entrance pupil plane
+        ampl_PA_noaberr = mft.imft(ampl_PAc_noaberr, D_mask_pixels, array_dim, corono)
     
     # --------------------------------
     # plane B (Focal plane)
@@ -954,3 +967,54 @@ def fourier_filter(opd, freq_cutoff=40, lowpass=True, window='hann', mask=None):
     opd_filtered *= mask
 
     return opd_filtered
+
+
+def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil):
+
+    '''
+    Propagate an OPD map through a Lyot Focal Plane Mask
+
+    Parameters
+    ----------
+    opd_map : array
+        OPD map, in m
+
+    pupil : array
+        Instrument pupil. Must match the opd_map size. 
+
+    wave : float, optional
+        Wavelength of the data, in m
+    
+    corono : float
+    	Size of the coronagraph Focal Plane Mask (FPM) in lambda/D.
+
+    Returns
+    -------
+    ampl_PP : array_like
+        Complex amplitude map in the re-imaged pupil plane for a given opd_map
+
+    '''
+    array_dim = opd_map.shape[-1]
+
+    # Diameter of the coronograph mask (in pixels). Determines the sampling only. 
+    D_mask_pixels = 300
+    
+    #Complex amplitude in the entrance focal plane
+    
+    ampl_PA = pupil*np.exp(1j*2.*np.pi*opd_map/wave)
+
+    # Amplitude in the focal plane of the FPM
+
+    ampl_PB = mft.mft(ampl_PA, array_dim, D_mask_pixels, corono)
+
+    # Multiplication by the transmission of the FPM
+
+    ampl_PB *= aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+
+    # Going back to pupil plane
+
+    ampl_PP = mft.imft(ampl_PB, D_mask_pixels, array_dim, corono)
+
+    return ampl_PP
+    
+    
