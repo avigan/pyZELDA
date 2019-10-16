@@ -622,7 +622,7 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
     return intensity_PC 
 
 
-def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio, pupil_diameter, pupil, wave):
+def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio, pupil_diameter, pupil, wave, corono=0):
     '''
     Simulate the ZELDA reference wave
 
@@ -650,6 +650,10 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio
     wave : float, optional
         Wavelength of the data, in m.
     
+    corono : float, optional
+    	Diameter in lambda/D of the FPM used to filter 
+    	the signal before the ZELDA wfs. Default is 0 (no FPM mask). 
+
     Returns
     -------
     reference_wave : array_like
@@ -661,7 +665,7 @@ def create_reference_wave(mask_diameter, mask_depth, mask_substrate, mask_Fratio
 
     # compute reference wave
     reference_wave, expi = create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, 
-                                                              mask_Fratio, pupil_diameter, pupil, wave)
+                                                              mask_Fratio, pupil_diameter, pupil, wave, corono=corono)
     
     return reference_wave * pupil, expi
 
