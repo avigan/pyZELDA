@@ -428,6 +428,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     
     # mask sampling in the focal plane
     D_mask_pixels = 300
+    D_mask_corono_pixels = 1000
 
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -445,13 +446,13 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
     # FPM step
     if corono:
-        ampl_PAb_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_pixels, corono)
+        ampl_PAb_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_corono_pixels, corono)
 
         # Multiplying by the transmission of the FPM
-        ampl_PAc_noaberr = ampl_PAb_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+        ampl_PAc_noaberr = ampl_PAb_noaberr * aperture.disc(D_mask_corono_pixels, D_mask_corono_pixels, diameter=True, cpix=True, strict=False)
 
         # Coming back to ZELDA entrance pupil plane
-        ampl_PA_noaberr = mft.imft(ampl_PAc_noaberr, D_mask_pixels, array_dim, corono)
+        ampl_PA_noaberr = mft.imft(ampl_PAc_noaberr, D_mask_corono_pixels, array_dim, corono)
     
     # --------------------------------
     # plane B (Focal plane)
@@ -557,6 +558,7 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
     
     # mask sampling in the focal plane
     D_mask_pixels = 300
+    D_mask_corono_pixels = 1000
 
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -574,21 +576,21 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
 
     # Coronagraph FPM filter
     if corono:
-        ampl_PAb = mft.mft(ampl_PA, array_dim, D_mask_pixels, corono)
-        plt.figure()
-        plt.imshow(abs(ampl_PAb))
-        plt.colorbar()
+        ampl_PAb = mft.mft(ampl_PA, array_dim, D_mask_corono_pixels, corono)
+        # plt.figure()
+        # plt.imshow(abs(ampl_PAb))
+        # plt.colorbar()
         # Multiplication by the Lyot mask
-        ampl_PAc = ampl_PAb *  aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
-        plt.figure()
-        plt.imshow(abs(ampl_PAc))
-        plt.colorbar()
+        ampl_PAc = ampl_PAb *  aperture.disc(D_mask_corono_pixels, D_mask_corono_pixels, diameter=True, cpix=True, strict=False)
+        # plt.figure()
+        # plt.imshow(abs(ampl_PAc))
+        # plt.colorbar()
         # Going back to initial pupil plane
-        ampl_PA = mft.imft(ampl_PAc, D_mask_pixels, array_dim, corono)
-        plt.figure()
-        plt.imshow(np.angle(ampl_PA)*aperture.disc(430, 430, diameter=True, cpix=True, strict=False))
-        plt.colorbar()
-        plt.show()
+        ampl_PA = mft.imft(ampl_PAc, D_mask_corono_pixels, array_dim, corono)
+        # plt.figure()
+        # plt.imshow(np.angle(ampl_PA)*aperture.disc(430, 430, diameter=True, cpix=True, strict=False))
+        # plt.colorbar()
+        # plt.show()
         
     # --------------------------------
     # plane B (Focal plane)
@@ -998,26 +1000,30 @@ def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil):
         Complex amplitude map in the re-imaged pupil plane for a given opd_map
 
     '''
+
+    
     array_dim = opd_map.shape[-1]
 
     # Diameter of the coronograph mask (in pixels). Determines the sampling only. 
-    D_mask_pixels = 300
+    D_mask_corono_pixels = 1000
     
     #Complex amplitude in the entrance focal plane
     
     ampl_PA = pupil*np.exp(1j*2.*np.pi*opd_map/wave)
+    if not(corono):
+        return ampl_PA
 
     # Amplitude in the focal plane of the FPM
 
-    ampl_PB = mft.mft(ampl_PA, array_dim, D_mask_pixels, corono)
+    ampl_PB = mft.mft(ampl_PA, array_dim, D_mask_corono_pixels, corono)
 
     # Multiplication by the transmission of the FPM
 
-    ampl_PB *= aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=True, strict=False)
+    ampl_PB *= aperture.disc(D_mask_corono_pixels, D_mask_corono_pixels, diameter=True, cpix=True, strict=False)
 
     # Going back to pupil plane
 
-    ampl_PP = mft.imft(ampl_PB, D_mask_pixels, array_dim, corono)
+    ampl_PP = mft.imft(ampl_PB, D_mask_corono_pixels, array_dim, corono)
 
     return ampl_PP
     
