@@ -395,7 +395,7 @@ class Sensor():
                                                   self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
-    
+
     def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1, use_arbitrary_amplitude=False,
                 pupil_roi=np.array([]), cpix=False, sign_mask=np.array([]), refwave_from_clear=False):
 
@@ -622,8 +622,8 @@ class Sensor():
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
-            if (ratio > ratio_limit):
-                raise NameError('Too many negative values in determinant (>1%)')
+#            if (ratio > ratio_limit):
+ #               raise NameError('Too many negative values in determinant (>1%)')
 
             # replace negative values by 0
             delta[neg_values] = 0
@@ -659,7 +659,7 @@ class Sensor():
         # variable name change
         opd_nm = zelda_pupil.squeeze()
 
-        return opd_nm
+        return opd_nm.squeeze()
 
     
     def propagate_opd_map(self, opd_map, wave):
