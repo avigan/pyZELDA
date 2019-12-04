@@ -21,6 +21,7 @@ import pyzelda.utils.zernike as zernike
 import pyzelda.utils.prof as prof
 import matplotlib.pyplot as plt
 
+D_mask_corono = 1000
 
 def number_of_frames(path, data_files):
     '''
@@ -364,7 +365,7 @@ def refractive_index(wave, substrate, T=293):
 
 
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                                       pupil_diameter, pupil, wave, corono=0):
+                                       pupil_diameter, pupil, wave, corono=0, D_mask_corono = D_mask_corono):
     '''
     Simulate the ZELDA reference wave
 
@@ -428,7 +429,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     
     # mask sampling in the focal plane
     D_mask_pixels = 300
-    D_mask_corono_pixels = 1000
+    D_mask_corono_pixels = D_mask_corono
 
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -444,16 +445,6 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # definition of the electric field in plane A in the absence of aberrations
     ampl_PA_noaberr = pupil
 
-    # FPM step
-    if corono:
-        ampl_PAb_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_corono_pixels, corono)
-
-        # Multiplying by the transmission of the FPM
-        ampl_PAc_noaberr = ampl_PAb_noaberr * aperture.disc(D_mask_corono_pixels, D_mask_corono_pixels, diameter=True, cpix=True, strict=False)
-
-        # Coming back to ZELDA entrance pupil plane
-        ampl_PA_noaberr = mft.imft(ampl_PAc_noaberr, D_mask_corono_pixels, array_dim, corono)
-    
     # --------------------------------
     # plane B (Focal plane)
 
@@ -492,7 +483,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
 
 def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                      pupil_diameter, pupil, wave, corono=0):
+                      pupil_diameter, pupil, wave, corono=0, D_mask_corono=D_mask_corono):
 
     '''
     Propagate an OPD map through a ZELDA sensor
@@ -558,7 +549,7 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
     
     # mask sampling in the focal plane
     D_mask_pixels = 300
-    D_mask_corono_pixels = 1000
+    D_mask_corono_pixels = D_mask_corono
 
     # ++++++++++++++++++++++++++++++++++
     # Numerical simulation part
@@ -586,7 +577,7 @@ def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_F
         # plt.imshow(abs(ampl_PAc))
         # plt.colorbar()
         # Going back to initial pupil plane
-        ampl_PA = mft.imft(ampl_PAc, D_mask_corono_pixels, array_dim, corono)
+        ampl_PA = mft.imft(ampl_PAc, D_mask_corono_pixels, array_dim, corono) * pupil
         # plt.figure()
         # plt.imshow(np.angle(ampl_PA)*aperture.disc(430, 430, diameter=True, cpix=True, strict=False))
         # plt.colorbar()
@@ -975,17 +966,17 @@ def fourier_filter(opd, freq_cutoff=40, lowpass=True, window='hann', mask=None):
     return opd_filtered
 
 
-def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil):
+def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil, D_mask_corono=D_mask_corono):
 
     '''
     Propagate an OPD map through a Lyot Focal Plane Mask
 
     Parameters
     ----------
-    opd_map : array
+    opd_map : 2-D array
         OPD map, in m
 
-    pupil : array
+    pupil : 2-D array
         Instrument pupil. Must match the opd_map size. 
 
     wave : float, optional
@@ -1005,7 +996,7 @@ def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil):
     array_dim = opd_map.shape[-1]
 
     # Diameter of the coronograph mask (in pixels). Determines the sampling only. 
-    D_mask_corono_pixels = 1000
+    D_mask_corono_pixels = D_mask_corono
     
     #Complex amplitude in the entrance focal plane
     
@@ -1025,6 +1016,6 @@ def propagate_corono(opd_map, wave, corono, pupil_diameter, pupil):
 
     ampl_PP = mft.imft(ampl_PB, D_mask_corono_pixels, array_dim, corono)
 
-    return ampl_PP
+    return ampl_PP * pupil
     
     
