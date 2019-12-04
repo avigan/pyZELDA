@@ -71,7 +71,7 @@ def zelda_analysis_sscorono(opd, sensor):
 
     return zopd*1e-9
 
-for i, basi in enumerate(extended_basis):
+'''for i, basi in enumerate(extended_basis):
     for j, basij in enumerate(basi):
         zopd2 = zelda_analysis(basij, sensor).squeeze()
         zopdl = zlinanal(basij, sensor)
@@ -113,7 +113,7 @@ for i in range(15):
 
 plt.savefig('/mnt/c/Users/rpourcelot/Desktop/testl{}.png'.format(sensor.corono))
 plt.tight_layout()
-plt.show()
+plt.show()'''
         
 '''
 Test the Zernike modes for different coronograph sizes, see what happens.

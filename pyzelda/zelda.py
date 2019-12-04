@@ -728,3 +728,312 @@ class Sensor():
         mask_rel_size = self.mask_diameter/(wave*self.mask_Fratio)
         
         return mask_rel_size
+
+
+    def analyze2(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1):
+        '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
+
+        Parameters
+        ----------
+        clear_pupil : array_like
+            Array containing the clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        wave : float, optional
+            Wavelength of the data, in m.
+
+        overwrite : bool
+            If set to True, the OPD maps are saved inside the zelda_pupil
+            array to save memory. Otherwise, a distinct OPD array is
+            returned. Do not use if you're not a ZELDA High Master :-)
+
+        ratio_limit : float
+            Percentage of negative pixel above which the analysis is considered as
+            failed. Default value is 1%
+
+        Returns
+        -------
+        opd : array_like
+            Optical path difference map in nanometers
+
+        '''
+
+        #make sure we have 3D cubes
+        if clear_pupil.ndim == 2:
+            clear_pupil = clear_pupil[np.newaxis, ...]
+
+        if zelda_pupil.ndim == 2:
+            zelda_pupil = zelda_pupil[np.newaxis, ...]
+
+        # create a copy of the zelda pupil array if needed
+        if not overwrite:
+            zelda_pupil = zelda_pupil.copy()
+
+        # make sure wave is an array
+        if type(wave) is not list:
+            wave = [wave]
+        wave  = np.array(wave)
+        nwave = wave.size
+
+        # ++++++++++++++++++++++++++++++++++
+        # Pupil
+        # ++++++++++++++++++++++++++++++++++
+        pupil_diameter = self._pupil_diameter
+        pupil = self._pupil
+        
+        # ++++++++++++++++++++++++++++++++++
+        # Reference wave(s)
+        # ++++++++++++++++++++++++++++++++++
+        keys = self._mask_diffraction_prop.keys()
+        for w in wave:
+            if w not in keys:
+                reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                    self._mask_substrate, self._Fratio,
+                                                                    pupil_diameter, pupil, w, corono=0)
+                self._mask_diffraction_prop[w] = (reference_wave, expi)
+
+        # ++++++++++++++++++++++++++++++++++
+        # Phase reconstruction from data
+        # ++++++++++++++++++++++++++++++++++        
+        if not self.silent:
+            print('ZELDA analysis')
+        nframes_clear = len(clear_pupil)
+        nframes_zelda = len(zelda_pupil)
+
+        # boolean pupil
+        pup = pupil.astype(bool)
+        
+        # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
+        if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
+            raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
+
+        if (nwave != 1) and (nwave != nframes_zelda):
+            raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
+
+        for idx in range(nframes_zelda):
+            if not self.silent:
+                print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
+
+            # normalization
+            if nframes_clear == 1:
+                zelda_norm = zelda_pupil[idx] / clear_pupil
+            else:
+                zelda_norm = zelda_pupil[idx] / clear_pupil[idx]
+            zelda_norm = zelda_norm.squeeze()
+            zelda_norm[~pup] = 0
+
+            # mask_diffraction_prop array contains the mask diffracted properties:
+            #  - [0] reference wave
+            #  - [1] dephasing term
+            if nwave == 1:
+                cwave = wave[0]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
+            else:
+                cwave = wave[idx]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
+
+            # determinant calculation
+            delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
+                    ((1-zelda_norm) / reference_wave) * (1-expi.real)
+            delta = delta.real
+            delta[~pup] = 0
+
+            # check for negative values
+            neg_values = ((delta < 0) & pup)
+            neg_count  = neg_values.sum()
+            ratio = neg_count / pup.sum() * 100
+
+            if not self.silent:
+                print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
+
+            # too many nagative values
+#            if (ratio > ratio_limit):
+ #               raise NameError('Too many negative values in determinant (>1%)')
+
+            # replace negative values by 0
+            delta[neg_values] = 0
+
+            # phase calculation
+            theta = (1 / (1-expi.real)) * (-expi.imag + np.sqrt(delta))
+            theta[~pup] = 0
+
+            # optical path difference in nm
+            kw = 2*np.pi / cwave
+            opd_nm = (1/kw) * theta * 1e9
+
+            # remove piston
+            opd_nm[pup] -= opd_nm[pup].mean()
+            
+            # statistics
+            if not self.silent:
+                print('OPD statistics:')
+                print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
+                print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
+                print(' * std = {0:0.2f} nm'.format(opd_nm[pup].std()))        
+
+            # save
+            zelda_pupil[idx] = opd_nm
+
+        # variable name change
+        opd_nm = zelda_pupil
+
+        return opd_nm.squeeze()
+
+
+
+def analyze2(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1):
+        '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
+
+        Parameters
+        ----------
+        clear_pupil : array_like
+            Array containing the clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        wave : float, optional
+            Wavelength of the data, in m.
+
+        overwrite : bool
+            If set to True, the OPD maps are saved inside the zelda_pupil
+            array to save memory. Otherwise, a distinct OPD array is
+            returned. Do not use if you're not a ZELDA High Master :-)
+
+        ratio_limit : float
+            Percentage of negative pixel above which the analysis is considered as
+            failed. Default value is 1%
+
+        Returns
+        -------
+        opd : array_like
+            Optical path difference map in nanometers
+
+        '''
+
+        #make sure we have 3D cubes
+        if clear_pupil.ndim == 2:
+            clear_pupil = clear_pupil[np.newaxis, ...]
+
+        if zelda_pupil.ndim == 2:
+            zelda_pupil = zelda_pupil[np.newaxis, ...]
+
+        # create a copy of the zelda pupil array if needed
+        if not overwrite:
+            zelda_pupil = zelda_pupil.copy()
+
+        # make sure wave is an array
+        if type(wave) is not list:
+            wave = [wave]
+        wave  = np.array(wave)
+        nwave = wave.size
+
+        # ++++++++++++++++++++++++++++++++++
+        # Pupil
+        # ++++++++++++++++++++++++++++++++++
+        pupil_diameter = self._pupil_diameter
+        pupil = self._pupil
+        
+        # ++++++++++++++++++++++++++++++++++
+        # Reference wave(s)
+        # ++++++++++++++++++++++++++++++++++
+        keys = self._mask_diffraction_prop.keys()
+        for w in wave:
+            if w not in keys:
+                reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                    self._mask_substrate, self._Fratio,
+                                                                    pupil_diameter, pupil, w, corono=0)
+                self._mask_diffraction_prop[w] = (reference_wave, expi)
+
+        # ++++++++++++++++++++++++++++++++++
+        # Phase reconstruction from data
+        # ++++++++++++++++++++++++++++++++++        
+        if not self.silent:
+            print('ZELDA analysis')
+        nframes_clear = len(clear_pupil)
+        nframes_zelda = len(zelda_pupil)
+
+        # boolean pupil
+        pup = pupil.astype(bool)
+        
+        # (nframes_clear, nframes_zelda) is either (1, N) or (N, N). (N, 1) is not allowed.
+        if (nframes_clear != nframes_zelda) and (nframes_clear != 1):
+            raise ValueError('Incompatible number of frames between clear and ZELDA pupil images')
+
+        if (nwave != 1) and (nwave != nframes_zelda):
+            raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
+
+        for idx in range(nframes_zelda):
+            if not self.silent:
+                print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
+
+            # normalization
+            if nframes_clear == 1:
+                zelda_norm = zelda_pupil[idx]
+            else:
+                zelda_norm = zelda_pupil[idx] / clear_pupil[idx]
+            zelda_norm = zelda_norm.squeeze()
+            zelda_norm[~pup] = 0
+
+            # mask_diffraction_prop array contains the mask diffracted properties:
+            #  - [0] reference wave
+            #  - [1] dephasing term
+            if nwave == 1:
+                cwave = wave[0]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
+            else:
+                cwave = wave[idx]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
+
+
+            P = np.sqrt(clear)
+            
+            # determinant calculation
+            delta = (expi.imag)**2 - 2/P * (reference_wave-P) * (1-expi.real)**2 - \
+                    (clear_pupil-zelda_norm)*(1-expi.real)/(P*reference_wave)
+            
+            delta = delta.real
+            delta[~pup] = 0
+
+            # check for negative values
+            neg_values = ((delta < 0) & pup)
+            neg_count  = neg_values.sum()
+            ratio = neg_count / pup.sum() * 100
+
+            if not self.silent:
+                print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
+
+            # too many nagative values
+#            if (ratio > ratio_limit):
+ #               raise NameError('Too many negative values in determinant (>1%)')
+
+            # replace negative values by 0
+            delta[neg_values] = 0
+
+            # phase calculation
+            theta = (1 / (1-expi.real)) * (-expi.imag + np.sqrt(delta))
+            theta[~pup] = 0
+
+            # optical path difference in nm
+            kw = 2*np.pi / cwave
+            opd_nm = (1/kw) * theta * 1e9
+
+            # remove piston
+            opd_nm[pup] -= opd_nm[pup].mean()
+            
+            # statistics
+            if not self.silent:
+                print('OPD statistics:')
+                print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
+                print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
+                print(' * std = {0:0.2f} nm'.format(opd_nm[pup].std()))        
+
+            # save
+            zelda_pupil[idx] = opd_nm
+
+        # variable name change
+        opd_nm = zelda_pupil
+
+        return opd_nm.squeeze()
