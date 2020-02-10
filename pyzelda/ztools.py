@@ -778,7 +778,7 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
         pad_opd = np.pad(opd, pad_width, 'constant')
         fft_opd = norm * fft.fftshift(fft.fft2(fft.fftshift(pad_opd), norm='ortho'))
     else:
-        fft_opd = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
+        fft_opd = norm * mft.mft(opd, Dpup, np.int(2*freq_cutoff*sampling), 2*freq_cutoff)
 
     return fft_opd
 
