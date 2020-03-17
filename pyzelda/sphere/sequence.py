@@ -801,7 +801,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
         return psd_cube
 
 
-def integrate_psd(root, psd, freq_cutoff=40, filename=None):
+def integrate_psd(root, psd, freq_cutoff=40, filename=None, silent=True):
     '''Integrate the PSDs
 
     PSDs are integrated up to a given spatial frequency cutoff, in
@@ -824,6 +824,9 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
         suffixes will be added to the base name for the integrated
         values and the bounds respectively.
 
+    silent : bool
+        Print some outputs. Default is True
+
     Returns
     -------
     psd_sigma, freq_bounds : vectors
@@ -842,7 +845,8 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
         freq_min = f
         freq_max = f+1
         
-        print(' * bounds: {0} ==> {1}'.format(freq_min, freq_max))
+        if not silent: 
+            print(' * bounds: {0} ==> {1}'.format(freq_min, freq_max))
 
         freq_bounds[f, 0] = freq_min
         freq_bounds[f, 1] = freq_max
@@ -862,8 +866,9 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
 
     # save
     if filename is not None:
-        fits.writeto(os.path.join(root, 'products', filename+'_int.fits'), psd_sigma, overwrite=True)
-        fits.writeto(os.path.join(root, 'products', filename+'_bnd.fits'), freq_bounds, overwrite=True)
+        dtype = np.dtype([('BOUNDS', 'f4', freq_bounds.shape), ('PSD', 'f4', psd_sigma.shape)])
+        rec = np.array([np.rec.array((freq_bounds, psd_sigma), dtype=dtype)])
+        fits.writeto(os.path.join(root, 'products', filename+'_psd.fits'), rec, overwrite=True)
 
     return psd_sigma, freq_bounds
 
@@ -1380,7 +1385,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     del data_sliding_mean
 
     if save_intermediate:
-        fits.writeto(root / 'products' / 'turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
     
     # compute PSD of turbulence
     if psd_compute:
@@ -1390,10 +1395,11 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of turbulence
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
-    
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / 'sequence_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+
         # free memory
         del psd_cube
     
@@ -1421,7 +1427,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         del basis
 
     if save_intermediate:
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
     
     # compute PSD of reconstructed turbulence
     if psd_compute:
@@ -1431,9 +1437,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
@@ -1445,7 +1452,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         turb_residuals = turb - turb_reconstructed
 
         if save_intermediate:
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
+            fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
         
         # compute PSD of residuals
         if psd_compute:
@@ -1458,9 +1465,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
             # integrate PSD of residuals
             psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-            # save
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+            # save as FITS table
+            dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+            rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+            fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
             # free memory
             del psd_cube
@@ -1474,7 +1482,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
 
     # save
     if save_product:
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}.fits'.format(suffix), data_no_turb, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}.fits'.format(suffix), data_no_turb, overwrite=True)
 
     # free memory
     del data
@@ -1488,9 +1496,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
@@ -1500,7 +1509,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     ncpa_cube = subtract_mean_opd(root, data_no_turb, nimg=ncpa_sliding_mean)
 
     if save_ncpa:
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
     
     # compute PSD of the final sequence
     if psd_compute:
@@ -1510,9 +1519,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
