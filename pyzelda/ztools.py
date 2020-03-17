@@ -146,13 +146,11 @@ def pupil_center(clear_pupil, center_method):
         c = np.roll(c, 1)
     else:
         raise NameError('Unkown centring method '+center_method)
-
-    print('Center: {0:.2f}, {1:.2f}'.format(c[0], c[1]))
         
     return c
 
 
-def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin, anamorphism):
+def recentred_data_files(path, data_files, dark, dim, center, collapse, origin, anamorphism):
     '''
     Read data cubes from disk and recenter them
 
@@ -219,6 +217,62 @@ def recentred_data_cubes(path, data_files, dark, dim, center, collapse, origin, 
     for idx, img in enumerate(data_cube):
         img = img - dark_sub
 
+        img = imutils.sigma_filter(img, box=5, nsigma=3, iterate=True)
+        img = imutils.shift(img, cint-center)
+
+        if anamorphism is not None:
+            img = imutils.scale(img, anamorphism, method='interp', center=(cc+ext, cc+ext))
+        
+        data_cube[idx] = img
+    
+    data_cube = data_cube[:, ext:dim+ext, ext:dim+ext]
+    
+    return data_cube
+
+
+def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
+    '''
+    Recenter already loaded data cubes
+
+    Parameters
+    ----------
+    cube : array
+        Data cube
+
+    dim : int, optional
+        Size of the final arrays
+
+    center : vector_like
+        Center of the pupil in the images
+
+    collapse : bool
+        Collapse or not the cubes
+    
+    origin : tuple
+        Origin point of the detector window to be extracted in the raw files
+
+    anamorphism : tuple
+        Pupil anamorphism. If not None, it must be a 2-elements tuple
+        with the scaling to apply along the x and y
+    '''
+    center = np.array(center)
+    cint = center.astype(np.int)
+    cc   = dim//2
+
+    # extract useful data
+    ext = 10
+    data_cube = cube[:, 
+                     origin[1]+cint[1]-cc-ext:origin[1]+cint[1]+cc+ext,
+                     origin[0]+cint[0]-cc-ext:origin[0]+cint[0]+cc+ext]
+    
+    del cube
+
+    # collapse if needed
+    if collapse:
+        data_cube = data_cube.mean(axis=0, keepdims=True)
+
+    # clean and recenter images
+    for idx, img in enumerate(data_cube):
         img = imutils.sigma_filter(img, box=5, nsigma=3, iterate=True)
         img = imutils.shift(img, cint-center)
 
@@ -724,7 +778,7 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
         pad_opd = np.pad(opd, pad_width, 'constant')
         fft_opd = norm * fft.fftshift(fft.fft2(fft.fftshift(pad_opd), norm='ortho'))
     else:
-        fft_opd = norm * mft.mft(opd, Dpup, 2*freq_cutoff*sampling, 2*freq_cutoff)
+        fft_opd = norm * mft.mft(opd, Dpup, np.int(2*freq_cutoff*sampling), 2*freq_cutoff)
 
     return fft_opd
 

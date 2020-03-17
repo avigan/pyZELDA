@@ -92,6 +92,9 @@ class Sensor():
         detector_origin : tuple (2 int)
             Origin of the detector sub-window, in pixels
 
+        silent : bool
+            Control output. Default is False
+
         '''
 
         self._instrument = instrument
@@ -102,7 +105,7 @@ class Sensor():
         config = ConfigParser.ConfigParser()
 
         try:
-            config.read(str(configfile))
+            config.read(str(configfile.as_posix()))
 
             # mask physical parameters
             self._Fratio = kwargs.get('mask_Fratio', float(config.get('mask', 'Fratio')))
@@ -142,8 +145,15 @@ class Sensor():
                 self._pupil = aperture.disc(self._pupil_diameter, self._pupil_diameter//2,
                                             mask=True, cpix=True, strict=False)
             
+            self._silent = kwargs.get('silent', False)
+                
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
+        
+        # dictionary to save mask diffraction properties: speed-up the
+        # analysis when multiple analyses are performed at the same
+        # wavelength with the same Sensor object
+        self._mask_diffraction_prop = {}
     
     ##################################################
     # Properties
@@ -201,6 +211,14 @@ class Sensor():
     def detector_subwindow_origin(self):
         return self._origin
 
+    @property
+    def silent(self):
+        return self._silent
+    
+    @silent.setter
+    def silent(self, status):
+        self._silent = bool(status)
+    
     ##################################################
     # Methods
     ##################################################
@@ -222,7 +240,8 @@ class Sensor():
             List of files that contains the ZELDA pupil data, without the .fits
 
         dark_files : str
-            List of files that contains the dark data, without the .fits
+            List of files that contains the dark data, without the .fits. If None,
+            assumes that the zelda and clear pupil images are already background-subtracted
 
         center : tuple, optional
             Specify the center of the pupil in raw data coordinations.
@@ -262,25 +281,30 @@ class Sensor():
         nframes_clear = ztools.number_of_frames(path, clear_pupil_files)	
         nframes_zelda = ztools.number_of_frames(path, zelda_pupil_files)	
 
-        print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
-        print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+        if not self.silent:
+            print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+            print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
 
         # make sure we have compatible data sets
         if (nframes_zelda == 1) or collapse_zelda:
             if nframes_clear != 1:
                 collapse_clear = True
-                print(' * automatic collapse of clear pupil to match ZELDA data')
+                if not self.silent:
+                    print(' * automatic collapse of clear pupil to match ZELDA data')
         else:
             if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
                 raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
                                  'You could use collapse_clear=True.')
 
-        # read dark data	
-        dark = ztools.load_data(path, dark_files, self._width, self._height, self._origin)
-        dark = dark.mean(axis=0)
-
         # read clear pupil data
         clear_pupil = ztools.load_data(path, clear_pupil_files, self._width, self._height, self._origin)
+
+        # read dark data
+        if dark_files:
+            dark = ztools.load_data(path, dark_files, self._width, self._height, self._origin)
+            dark = dark.mean(axis=0)
+        else:
+            dark = np.zeros((clear_pupil.shape[-2], clear_pupil.shape[-1]))
 
         ##############################
         # Center determination
@@ -302,15 +326,114 @@ class Sensor():
         ##############################
         # Clean and recenter images
         ##############################
-        clear_pupil = ztools.recentred_data_cubes(path, clear_pupil_files, dark, self._pupil_diameter,
+        clear_pupil = ztools.recentred_data_files(path, clear_pupil_files, dark, self._pupil_diameter,
                                                   center, collapse_clear, self._origin, self._pupil_anamorphism)
-        zelda_pupil = ztools.recentred_data_cubes(path, zelda_pupil_files, dark, self._pupil_diameter,
+        zelda_pupil = ztools.recentred_data_files(path, zelda_pupil_files, dark, self._pupil_diameter,
                                                   center, collapse_zelda, self._origin, self._pupil_anamorphism)
 
         return clear_pupil, zelda_pupil, center
     
 
-    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, silent=False):
+    def process_cubes(self, clear_pupil, zelda_pupil, center=(), center_method='fit',
+                      collapse_clear=False, collapse_zelda=False):
+        '''
+        Alternative to read_files(): use already loaded data cubes to
+        generate the clear_pupil and zelda_pupil. The images must
+        already be dark-subtracted.
+
+        Parameters
+        ----------
+        clear_pupil : array
+            Cube of frames that contain the clear pupil data
+
+        zelda_pupil : str
+            Cube of frames that contain the ZELDA pupil data
+
+        center : tuple, optional
+            Specify the center of the pupil in raw data coordinations.
+            Default is '()', i.e. the center will be determined by the routine
+
+        center_method : str, optional
+            Method to be used for finding the center of the pupil:
+             - 'fit': least squares circle fit (default)
+             - 'com': center of mass
+
+        collapse_clear : bool
+            Collapse the clear pupil images. Default is False
+
+        collapse_zelda : bool
+            Collapse the zelda pupil images. Default is False
+
+        Returns
+        -------
+        clear_pupil : array_like
+            Array containing the collapsed clear pupil data
+
+        zelda_pupil : array_like
+            Array containing the zelda pupil data
+
+        c : vector_like
+            Vector containing the (x,y) coordinates of the center in 1024x1024 raw data format
+        '''
+
+        ##############################
+        # Deal with files
+        ##############################
+
+        # read number of frames
+        nframes_clear = len(clear_pupil)
+        nframes_zelda = len(zelda_pupil)
+
+        if not self.silent:
+            print('Clear pupil: nframes={0}, collapse={1}'.format(nframes_clear, collapse_clear))
+            print('ZELDA pupil: nframes={0}, collapse={1}'.format(nframes_zelda, collapse_zelda))
+
+        # make sure we have compatible data sets
+        if (nframes_zelda == 1) or collapse_zelda:
+            if nframes_clear != 1:
+                collapse_clear = True
+                if not self.silent:
+                    print(' * automatic collapse of clear pupil to match ZELDA data')
+        else:
+            if (nframes_zelda != nframes_clear) and (not collapse_clear) and (nframes_clear != 1):
+                raise ValueError('Incompatible number of frames between ZELDA and clear pupil. ' +
+                                 'You could use collapse_clear=True.')
+
+        # make sure we have cubes
+        if clear_pupil.ndim == 2:
+            clear_pupil = clear_pupil[np.newaxis, ...]
+
+        if zelda_pupil.ndim == 2:
+            zelda_pupil = zelda_pupil[np.newaxis, ...]
+            
+        ##############################
+        # Center determination
+        ##############################
+
+        # collapse clear pupil image
+        clear_pupil_collapse = clear_pupil.mean(axis=0, keepdims=True)
+
+        # subtract background and correct for bad pixels
+        clear_pupil_collapse = imutils.sigma_filter(clear_pupil_collapse.squeeze(), box=5, nsigma=3, iterate=True)
+
+        # search for the pupil center
+        if len(center) == 0:
+            center = ztools.pupil_center(clear_pupil_collapse, center_method)
+        elif len(center) != 2:
+            raise ValueError('Error, you must pass 2 values for center')
+        
+        ##############################
+        # Clean and recenter images
+        ##############################
+        clear_pupil = ztools.recentred_data_cubes(clear_pupil, self._pupil_diameter, center, collapse_clear, 
+                                                  self._origin, self._pupil_anamorphism)
+        zelda_pupil = ztools.recentred_data_cubes(zelda_pupil, self._pupil_diameter, center, collapse_zelda, 
+                                                  self._origin, self._pupil_anamorphism)
+
+        return clear_pupil, zelda_pupil, center
+    
+    
+    def analyze(self, clear_pupil, zelda_pupil, wave, overwrite=False, ratio_limit=1):
         '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
 
         Parameters
@@ -329,8 +452,9 @@ class Sensor():
             array to save memory. Otherwise, a distinct OPD array is
             returned. Do not use if you're not a ZELDA High Master :-)
 
-        silent : bool, optional
-            Remain silent during the data analysis
+        ratio_limit : float
+            Percentage of negative pixel above which the analysis is considered as
+            failed. Default value is 1%
 
         Returns
         -------
@@ -365,17 +489,19 @@ class Sensor():
         # ++++++++++++++++++++++++++++++++++
         # Reference wave(s)
         # ++++++++++++++++++++++++++++++++++
-        mask_diffraction_prop = []
+        keys = self._mask_diffraction_prop.keys()
         for w in wave:
-            reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
-                                                                self._mask_substrate, self._Fratio,
-                                                                pupil_diameter, pupil, w)
-            mask_diffraction_prop.append((reference_wave, expi))
+            if w not in keys:
+                reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                    self._mask_substrate, self._Fratio,
+                                                                    pupil_diameter, pupil, w)
+                self._mask_diffraction_prop[w] = (reference_wave, expi)
 
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
         # ++++++++++++++++++++++++++++++++++        
-        print('ZELDA analysis')
+        if not self.silent:
+            print('ZELDA analysis')
         nframes_clear = len(clear_pupil)
         nframes_zelda = len(zelda_pupil)
 
@@ -390,7 +516,8 @@ class Sensor():
             raise ValueError('Incompatible number of wavelengths and ZELDA pupil images')
 
         for idx in range(nframes_zelda):
-            print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
+            if not self.silent:
+                print(' * frame {0} / {1}'.format(idx+1, nframes_zelda))
 
             # normalization
             if nframes_clear == 1:
@@ -405,12 +532,10 @@ class Sensor():
             #  - [1] dephasing term
             if nwave == 1:
                 cwave = wave[0]
-                reference_wave = mask_diffraction_prop[0][0]
-                expi = mask_diffraction_prop[0][1]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
             else:
                 cwave = wave[idx]
-                reference_wave = mask_diffraction_prop[idx][0]
-                expi = mask_diffraction_prop[idx][1]
+                reference_wave, expi = self._mask_diffraction_prop[cwave]
 
             # determinant calculation
             delta = (expi.imag)**2 - 2*(reference_wave-1) * (1-expi.real)**2 - \
@@ -423,11 +548,11 @@ class Sensor():
             neg_count  = neg_values.sum()
             ratio = neg_count / pup.sum() * 100
 
-            if (silent is False):
+            if not self.silent:
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
-            if (ratio > 1):
+            if (ratio > ratio_limit):
                 raise NameError('Too many negative values in determinant (>1%)')
 
             # replace negative values by 0
@@ -445,7 +570,7 @@ class Sensor():
             opd_nm[pup] -= opd_nm[pup].mean()
             
             # statistics
-            if (silent is False):
+            if not self.silent:
                 print('OPD statistics:')
                 print(' * min = {0:0.2f} nm'.format(opd_nm[pup].min()))
                 print(' * max = {0:0.2f} nm'.format(opd_nm[pup].max()))
