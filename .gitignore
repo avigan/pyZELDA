@@ -92,3 +92,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+pyzelda/.spyproject/workspace.ini
+pyzelda/.spyproject/vcs.ini
+pyzelda/.spyproject/encoding.ini
+pyzelda/.spyproject/codestyle.ini

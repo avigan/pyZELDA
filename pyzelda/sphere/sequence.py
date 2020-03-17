@@ -148,9 +148,9 @@ def sort_files(root):
         dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
 
         # observatory location
-        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
-        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
-        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
+        geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
+        geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
         
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
@@ -228,9 +228,9 @@ def sort_files(root):
         dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
 
         # observatory location
-        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
-        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
-        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
+        geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
+        geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
         
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
