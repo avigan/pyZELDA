@@ -23,6 +23,7 @@ import time
 import numpy.fft as fft
 import logging as log
 import multiprocessing as mp
+import ctypes
 
 from astropy.io import fits
 from astropy.time import Time, TimeDelta
