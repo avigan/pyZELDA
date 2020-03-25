@@ -22,6 +22,7 @@ import matplotlib.colors as colors
 import time
 import numpy.fft as fft
 import logging as log
+import multiprocessing as mp
 
 from astropy.io import fits
 from astropy.time import Time, TimeDelta
@@ -1218,8 +1219,35 @@ def matrix_difference(root, data, pupil_mask=None, filename=None):
 
     return matrix_diff_ptv, matrix_diff_std
 
-    
-def matrix_process(root, matrix):
+def array_to_numpy(shared_array, shape, dtype):
+    if shared_array is None:
+        return None
+
+    numpy_array = np.frombuffer(shared_array, dtype=dtype)
+    if shape is not None:
+        numpy_array.shape = shape
+
+    return numpy_array
+
+def matrix_tpool_init(matrix_data_i, matrix_shape_i):
+    global matrix_data, matrix_shape
+
+    matrix_data  = matrix_data_i
+    matrix_shape = matrix_shape_i
+
+def matrix_tpool_process(diag):
+    global matrix_data, matrix_shape
+
+    matrix = array_to_numpy(matrix_data, matrix_shape, np.float)
+    nimg   = matrix.shape[-1]
+
+    mask = np.eye(nimg, k=-diag, dtype=np.bool)
+    mean = matrix[mask].mean()
+    std  = matrix[mask].std()
+
+    return diag, mean, std
+
+def matrix_process(root, matrix, ncpu=1):
     '''Process a correlation matrix
 
     The processing computes the average and standard deviation of the
@@ -1234,6 +1262,9 @@ def matrix_process(root, matrix):
     matrix : str
         Correlation matrix to be processed
 
+    ncpu : int
+        Number of CPUs to use. Default is 1
+
     Returns
     -------
     vec_mean : array
@@ -1247,16 +1278,27 @@ def matrix_process(root, matrix):
     
     nimg = matrix.shape[-1]
 
+    matrix_data  = mp.RawArray(ctypes.c_double, matrix.size)
+    matrix_shape = matrix.shape
+    matrix_np    = array_to_numpy(matrix_data, matrix_shape, np.float)
+    matrix_np[:] = matrix
+
+    pool = mp.Pool(processes=ncpu, initializer=matrix_tpool_init, 
+                   initargs=(matrix_data, matrix_shape))
+    tasks = []
+    for i in range(nimg):
+        tasks.append(pool.apply_async(matrix_tpool_process, args=(i, )))
+
+    pool.close()
+    pool.join()
+
     vec_mean = np.zeros(nimg)
     vec_std  = np.zeros(nimg)
-    for i in range(nimg):
-        if (np.mod(i, 100) == 0):
-            print(' * time step {0} / {1}'.format(i, nimg))
-            
-        mask = np.eye(nimg, k=-i, dtype=np.bool)
-
-        vec_mean[i] = matrix[mask].mean()
-        vec_std[i]  = matrix[mask].std()
+    for task in tasks:
+        idx, mean, std = task.get()
+        vec_mean[i] = mean
+        vec_std[i]  = std
+    del tasks
 
     return vec_mean, vec_std
 
