@@ -1297,8 +1297,8 @@ def matrix_process(root, matrix, ncpu=1):
     vec_std  = np.zeros(nimg)
     for task in tasks:
         idx, mean, std = task.get()
-        vec_mean[i] = mean
-        vec_std[i]  = std
+        vec_mean[idx] = mean
+        vec_std[idx]  = std
     del tasks
 
     return vec_mean, vec_std
