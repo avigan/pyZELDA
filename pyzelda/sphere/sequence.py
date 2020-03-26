@@ -109,6 +109,16 @@ def sort_files(root):
         info_files.loc[info_files.index[idx], 'drot_beg'] = hdr['HIERARCH ESO INS4 DROT2 BEGIN']
         info_files.loc[info_files.index[idx], 'drot_end'] = hdr['HIERARCH ESO INS4 DROT2 END']
 
+        # save values from important sensors
+        info_files.loc[info_files.index[idx], 'temp_enclosure'] = hdr['HIERARCH ESO INS4 TEMP421']
+        info_files.loc[info_files.index[idx], 'temp_hodm'] = hdr['HIERARCH ESO INS4 TEMP422 VAL']
+        info_files.loc[info_files.index[idx], 'temp_wfs'] = hdr['HIERARCH ESO INS4 TEMP423 VAL']
+        info_files.loc[info_files.index[idx], 'temp_ittm'] = hdr['HIERARCH ESO INS4 TEMP424 VAL']
+        info_files.loc[info_files.index[idx], 'temp_near_ifs'] = hdr['HIERARCH ESO INS4 TEMP425 VAL']
+        info_files.loc[info_files.index[idx], 'temp_fp1'] = hdr['HIERARCH ESO INS4 TEMP430 VAL']
+        info_files.loc[info_files.index[idx], 'temp_lamp_table'] = hdr['HIERARCH ESO INS4 TEMP431 VAL']
+        info_files.loc[info_files.index[idx], 'temp_zimpol_bench'] = hdr['HIERARCH ESO INS4 TEMP416 VAL']
+
     # file types
     info_files.loc[np.logical_not(info_files.source), 'type'] = 'B'
     info_files.loc[info_files.source & (info_files.coro == 'ZELDA'), 'type'] = 'Z'
