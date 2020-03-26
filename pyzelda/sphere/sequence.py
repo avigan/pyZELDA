@@ -112,7 +112,7 @@ def sort_files(root):
         # save values from important sensors
         info_files.loc[info_files.index[idx], 'temp_enclosure'] = hdr['HIERARCH ESO INS4 TEMP421 VAL']
         info_files.loc[info_files.index[idx], 'temp_hodm'] = hdr['HIERARCH ESO INS4 TEMP422 VAL']
-        info_files.loc[info_files.index[idx], 'humidity_hodm'] = hdr['HIERARCH ESO INS4 SENS428 VAL']        
+        info_files.loc[info_files.index[idx], 'humidity_hodm'] = hdr.get('HIERARCH ESO INS4 SENS428 VAL', -1)
         info_files.loc[info_files.index[idx], 'temp_wfs'] = hdr['HIERARCH ESO INS4 TEMP423 VAL']
         info_files.loc[info_files.index[idx], 'temp_ittm'] = hdr['HIERARCH ESO INS4 TEMP424 VAL']
         info_files.loc[info_files.index[idx], 'temp_near_ifs'] = hdr['HIERARCH ESO INS4 TEMP425 VAL']
