@@ -22,6 +22,8 @@ import matplotlib.colors as colors
 import time
 import numpy.fft as fft
 import logging as log
+import multiprocessing as mp
+import ctypes
 
 from astropy.io import fits
 from astropy.time import Time, TimeDelta
@@ -107,6 +109,15 @@ def sort_files(root):
         info_files.loc[info_files.index[idx], 'drot_beg'] = hdr['HIERARCH ESO INS4 DROT2 BEGIN']
         info_files.loc[info_files.index[idx], 'drot_end'] = hdr['HIERARCH ESO INS4 DROT2 END']
 
+        # save values from important sensors
+        info_files.loc[info_files.index[idx], 'temp_enclosure'] = hdr['HIERARCH ESO INS4 TEMP421 VAL']
+        info_files.loc[info_files.index[idx], 'temp_hodm'] = hdr['HIERARCH ESO INS4 TEMP422 VAL']
+        info_files.loc[info_files.index[idx], 'temp_wfs'] = hdr['HIERARCH ESO INS4 TEMP423 VAL']
+        info_files.loc[info_files.index[idx], 'temp_ittm'] = hdr['HIERARCH ESO INS4 TEMP424 VAL']
+        info_files.loc[info_files.index[idx], 'temp_near_ifs'] = hdr['HIERARCH ESO INS4 TEMP425 VAL']
+        info_files.loc[info_files.index[idx], 'temp_zimpol_bench'] = hdr['HIERARCH ESO INS4 TEMP416 VAL']
+        info_files.loc[info_files.index[idx], 'humidity_hodm'] = hdr.get('HIERARCH ESO INS4 SENS428 VAL', -1)
+
     # file types
     info_files.loc[np.logical_not(info_files.source), 'type'] = 'B'
     info_files.loc[info_files.source & (info_files.coro == 'ZELDA'), 'type'] = 'Z'
@@ -148,9 +159,9 @@ def sort_files(root):
         dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
 
         # observatory location
-        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
-        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
-        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
+        geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
+        geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
         
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
@@ -228,9 +239,9 @@ def sort_files(root):
         dec = coord.Angle((dec_drot_d, dec_drot_m, dec_drot_s), units.degree)
 
         # observatory location
-        geolon = coord.Angle(hdr['HIERARCH ESO TEL GEOLON'], units.degree)
-        geolat = coord.Angle(hdr['HIERARCH ESO TEL GEOLAT'], units.degree)
-        geoelev = hdr['HIERARCH ESO TEL GEOELEV']
+        geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
+        geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
+        geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
         
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
@@ -801,7 +812,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
         return psd_cube
 
 
-def integrate_psd(root, psd, freq_cutoff=40, filename=None):
+def integrate_psd(root, psd, freq_cutoff=40, filename=None, silent=True):
     '''Integrate the PSDs
 
     PSDs are integrated up to a given spatial frequency cutoff, in
@@ -824,6 +835,9 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
         suffixes will be added to the base name for the integrated
         values and the bounds respectively.
 
+    silent : bool
+        Print some outputs. Default is True
+
     Returns
     -------
     psd_sigma, freq_bounds : vectors
@@ -842,7 +856,8 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
         freq_min = f
         freq_max = f+1
         
-        print(' * bounds: {0} ==> {1}'.format(freq_min, freq_max))
+        if not silent: 
+            print(' * bounds: {0} ==> {1}'.format(freq_min, freq_max))
 
         freq_bounds[f, 0] = freq_min
         freq_bounds[f, 1] = freq_max
@@ -862,8 +877,9 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None):
 
     # save
     if filename is not None:
-        fits.writeto(os.path.join(root, 'products', filename+'_int.fits'), psd_sigma, overwrite=True)
-        fits.writeto(os.path.join(root, 'products', filename+'_bnd.fits'), freq_bounds, overwrite=True)
+        dtype = np.dtype([('BOUNDS', 'f4', freq_bounds.shape), ('PSD', 'f4', psd_sigma.shape)])
+        rec = np.array([np.rec.array((freq_bounds, psd_sigma), dtype=dtype)])
+        fits.writeto(os.path.join(root, 'products', filename+'_psd.fits'), rec, overwrite=True)
 
     return psd_sigma, freq_bounds
 
@@ -1213,8 +1229,35 @@ def matrix_difference(root, data, pupil_mask=None, filename=None):
 
     return matrix_diff_ptv, matrix_diff_std
 
-    
-def matrix_process(root, matrix):
+def array_to_numpy(shared_array, shape, dtype):
+    if shared_array is None:
+        return None
+
+    numpy_array = np.frombuffer(shared_array, dtype=dtype)
+    if shape is not None:
+        numpy_array.shape = shape
+
+    return numpy_array
+
+def matrix_tpool_init(matrix_data_i, matrix_shape_i):
+    global matrix_data, matrix_shape
+
+    matrix_data  = matrix_data_i
+    matrix_shape = matrix_shape_i
+
+def matrix_tpool_process(diag):
+    global matrix_data, matrix_shape
+
+    matrix = array_to_numpy(matrix_data, matrix_shape, np.float)
+    nimg   = matrix.shape[-1]
+
+    mask = np.eye(nimg, k=-diag, dtype=np.bool)
+    mean = matrix[mask].mean()
+    std  = matrix[mask].std()
+
+    return diag, mean, std
+
+def matrix_process(root, matrix, ncpu=1):
     '''Process a correlation matrix
 
     The processing computes the average and standard deviation of the
@@ -1229,6 +1272,9 @@ def matrix_process(root, matrix):
     matrix : str
         Correlation matrix to be processed
 
+    ncpu : int
+        Number of CPUs to use. Default is 1
+
     Returns
     -------
     vec_mean : array
@@ -1242,16 +1288,27 @@ def matrix_process(root, matrix):
     
     nimg = matrix.shape[-1]
 
+    matrix_data  = mp.RawArray(ctypes.c_double, matrix.size)
+    matrix_shape = matrix.shape
+    matrix_np    = array_to_numpy(matrix_data, matrix_shape, np.float)
+    matrix_np[:] = matrix
+
+    pool = mp.Pool(processes=ncpu, initializer=matrix_tpool_init, 
+                   initargs=(matrix_data, matrix_shape))
+    tasks = []
+    for i in range(nimg):
+        tasks.append(pool.apply_async(matrix_tpool_process, args=(i, )))
+
+    pool.close()
+    pool.join()
+
     vec_mean = np.zeros(nimg)
     vec_std  = np.zeros(nimg)
-    for i in range(nimg):
-        if (np.mod(i, 100) == 0):
-            print(' * time step {0} / {1}'.format(i, nimg))
-            
-        mask = np.eye(nimg, k=-i, dtype=np.bool)
-
-        vec_mean[i] = matrix[mask].mean()
-        vec_std[i]  = matrix[mask].std()
+    for task in tasks:
+        idx, mean, std = task.get()
+        vec_mean[idx] = mean
+        vec_std[idx]  = std
+    del tasks
 
     return vec_mean, vec_std
 
@@ -1380,7 +1437,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     del data_sliding_mean
 
     if save_intermediate:
-        fits.writeto(root / 'products' / 'turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
     
     # compute PSD of turbulence
     if psd_compute:
@@ -1390,10 +1447,11 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of turbulence
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
-    
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / 'sequence_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+
         # free memory
         del psd_cube
     
@@ -1421,7 +1479,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         del basis
 
     if save_intermediate:
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
     
     # compute PSD of reconstructed turbulence
     if psd_compute:
@@ -1431,9 +1489,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'reconstructed_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
@@ -1445,7 +1504,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         turb_residuals = turb - turb_reconstructed
 
         if save_intermediate:
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
+            fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
         
         # compute PSD of residuals
         if psd_compute:
@@ -1458,9 +1517,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
             # integrate PSD of residuals
             psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-            # save
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-            fits.writeto(root / 'products' / 'turbulence_residuals_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+            # save as FITS table
+            dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+            rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+            fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
             # free memory
             del psd_cube
@@ -1474,7 +1534,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
 
     # save
     if save_product:
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}.fits'.format(suffix), data_no_turb, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}.fits'.format(suffix), data_no_turb, overwrite=True)
 
     # free memory
     del data
@@ -1488,9 +1548,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'data_cube_no_turbulence_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
@@ -1500,7 +1561,7 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     ncpa_cube = subtract_mean_opd(root, data_no_turb, nimg=ncpa_sliding_mean)
 
     if save_ncpa:
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
     
     # compute PSD of the final sequence
     if psd_compute:
@@ -1510,9 +1571,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         # integrate PSD of residuals
         psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
 
-        # save
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_psd.fits'.format(suffix), psd_int, overwrite=True)
-        fits.writeto(root / 'products' / 'ncpa_cube_{:s}_bounds.fits'.format(suffix), psd_bnds, overwrite=True)
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
