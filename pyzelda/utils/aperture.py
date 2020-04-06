@@ -384,8 +384,9 @@ def vlt_pupil(dim, diameter, spiders_thickness=0.008, spiders_orientation=0,
     
     # dead actuators
     if dead_actuator_diameter > 0:
-        xarr = np.array([ 0.1534,  -0.0984, -0.1963,  0.2766,  0.3297])
-        yarr = np.array([-0.0768,  -0.1240, -0.3542, -0.2799, -0.2799])
+        dead_actuators = np.array(dead_actuators)
+        xarr = dead_actuators[0]
+        yarr = dead_actuators[1]
         for i in range(len(xarr)):
             cx = xarr[i] * diameter + dim/2
             cy = yarr[i] * diameter + dim/2
@@ -489,9 +490,9 @@ def sphere_irdis_pupil(dim=384, dead_actuator_diameter=0, spiders=True, spiders_
     pup *= spider0
 
     # dead actuators on the edges
-    # pup[100:140, diameter-22:] = 0
-    # pup[100:275, diameter-15:] = 0
-
+    # pup[195:275, diameter-20:] = 0
+    # pup[120:140, diameter-20:] = 0
+    
     # dead actuators
     if dead_actuator_diameter > 0:
         xarr = np.array([ 0.1534,  -0.0984, -0.1963,  0.2766,  0.3297])
