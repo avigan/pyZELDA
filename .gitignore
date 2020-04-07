@@ -1,5 +1,7 @@
 # misc
 .DS_Store
+data/*.fits
+data/*.tar.gz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
