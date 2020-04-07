@@ -12,6 +12,27 @@ The formalism of the Zernike wavefront sensor and the demonstration of its capab
 - [N'Diaye, Vigan, Dohlen et al., 2016, A&A, 592, A79](https://ui.adsabs.harvard.edu/#abs/2016A&A...592A..79N/abstract)
 - [Vigan, N'Diaye, Dohlen et al., 2019, A&A, 629, A11](https://ui.adsabs.harvard.edu/abs/2019A%26A...629A..11V/abstract)
 
+Requirements
+------------
+
+The package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [matplotlib](https://matplotlib.org/) and [astropy](https://www.astropy.org/).
+
+Installation
+------------
+
+The easiest is to install `pyzelda` using `pip`:
+
+```sh
+pip install pyzelda
+```
+
+Otherwise your can download the current repository and install the package manually:
+
+```sh
+cd pyZELDA-master/
+python setup.py install
+```
+
 Citation
 --------
 
