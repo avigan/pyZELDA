@@ -17,7 +17,7 @@ Citation
 
 If you use this software, or part it, please reference the code from the Astrophysics Source Code Library ([ASCL](http://ascl.net/)):
 
-[Vigan & N'Diaye, 2018, ascl:1806.003](https://ui.adsabs.harvard.edu/abs/2018ascl.soft06003V/abstract)
+- [Vigan & N'Diaye, 2018, ascl:1806.003](https://ui.adsabs.harvard.edu/abs/2018ascl.soft06003V/abstract)
 
 Authors
 -------
