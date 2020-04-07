@@ -2,8 +2,7 @@ from setuptools import setup
 
 setup(
     name='pyZELDA',
-    version='1.0',
-
+    version='1.1',
     description='Zernike wavefront sensor analysis and simulation tools',
     url='https://github.com/avigan/pyZELDA',
     author='Arthur Vigan & Mamadou N\'Diaye',
@@ -11,7 +10,7 @@ setup(
     license='MIT',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Professional Astronomers',
+        'Intended Audience :: Science/Research ',
         'Topic :: Wavefront Sensing',
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License'
