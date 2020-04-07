@@ -19,7 +19,7 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Science/Research ',
-        'Topic :: Wavefront Sensing',
+        'Topic :: Scientific/Engineering :: Astronomy',
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License'
     ],
