@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 '''
 pyZELDA main module
-
 The pyZELDA package provides facility functions to analyse data from a
 Zernike wavefront sensor, e.g. the ZELDA wavefront sensor implemented
 into VLT/SPHERE
-
 arthur.vigan@lam.fr
 mamadou.ndiaye@oca.eu
 '''
@@ -27,7 +25,6 @@ import pyzelda.utils.aperture as aperture
 import pyzelda.utils.circle_fit as circle_fit
 import pyzelda.ztools as ztools
 import pyzelda.utils.zernike as zernike
-
 
 if sys.version_info < (3, 0):
     import ConfigParser
@@ -134,7 +131,7 @@ class Sensor():
 
         except ConfigParser.Error as e:
             raise ValueError('Error reading configuration file for instrument {0}: {1}'.format(instrument, e.message))
-            
+
         # dictionary to save mask diffraction properties: speed-up the
         # analysis when multiple analyses are performed at the same
         # wavelength with the same Sensor object
@@ -415,6 +412,7 @@ class Sensor():
         ratio_limit : float
             Percentage of negative pixel above which the analysis is considered as
             failed. Default value is 1%
+
         use_arbitrary_amplitude : boolean, default is False
             If set to True, will use the formula (12) in N'Diaye 2013 that considers the pupil amplitude
             P as arbitrary. Otherwise will use the standard approximation P = 1
@@ -430,15 +428,12 @@ class Sensor():
         refwave_from_clear : bool, default is False
             if True, the reference wave will be calculated with the square root of the clear image.
             Otherwise, it will be computed from the self._pupil theoretical data.
+
         Returns
         -------
         opd : array_like
             Optical path difference map in nanometers
         '''
-
-        if not self.silent:
-            print('ZELDA analysis')
-
         # make sure we have 3D cubes
         if clear_pupil.ndim == 2:
             clear_pupil = clear_pupil[np.newaxis, ...]
@@ -460,7 +455,6 @@ class Sensor():
             # TODO : strange assertion, why not ndarray ?
         if type(wave) is not np.ndarray:
             wave = np.array(wave)
-
         nwave = wave.size
 
         # ++++++++++++++++++++++++++++++++++
@@ -533,6 +527,24 @@ class Sensor():
                         sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
 
                 self._mask_diffraction_prop[key] = (reference_wave, expi)
+        
+        keys = self._mask_diffraction_prop.keys()
+        for w in wave:
+            if w not in keys:
+
+                if refwave_from_clear:
+                    print('hello_there_too')
+                    reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                        self._mask_substrate, self._Fratio,
+                                                                        pupil_diameter, pupil, w, clear=clear_pupil[0],
+                                                                        sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
+            
+                else:
+                    reference_wave, expi = ztools.create_reference_wave(self._mask_diameter, self._mask_depth,
+                                                                        self._mask_substrate, self._Fratio,
+                                                                        pupil_diameter, pupil, w, clear=np.array([]),
+                                                                        sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
+                self._mask_diffraction_prop[w] = (reference_wave, expi)
 
         # ++++++++++++++++++++++++++++++++++
         # Phase reconstruction from data
@@ -572,6 +584,7 @@ class Sensor():
             # mask_diffraction_prop array contains the mask diffracted properties:
             #  - [0] reference wave
             #  - [1] dephasing term
+
             reference_wave, expi = self._mask_diffraction_prop[key]
 
             if use_arbitrary_amplitude:
@@ -622,8 +635,8 @@ class Sensor():
                 print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
 
             # too many nagative values
-#            if (ratio > ratio_limit):
- #               raise NameError('Too many negative values in determinant (>1%)')
+            if (ratio > ratio_limit):
+                raise NameError('Too many negative values in determinant (>1%)')
 
             # replace negative values by 0
             delta[neg_values] = 0
@@ -631,18 +644,17 @@ class Sensor():
             # phase calculation
             theta = (1 / (1 - expi.real)) * (-expi.imag + np.sqrt(delta))
             if pupil_roi.any():
-                theta[pupil_roi == 0] = 0
+                theta[pupil_roi==0] = 0
             else:
                 theta[~pup] = 0
 
             # optical path difference in nm
             kw = 2 * np.pi / cwave
-            opd_nm = (1 / kw) * theta  # *1e9
-            # SHOULDN'T WE KEEP IT IN METERS ?
+            opd_nm = (1 / kw) * theta # *1e9
 
             # remove piston
             if pupil_roi.any():
-                opd_nm[pupil_roi == True] -= opd_nm[pupil_roi == True].mean()
+                opd_nm[pupil_roi==True] -= opd_nm[pupil_roi==True].mean()
             else:
                 opd_nm[pup] -= opd_nm[pup].mean()
 
@@ -659,19 +671,16 @@ class Sensor():
         # variable name change
         opd_nm = zelda_pupil.squeeze()
 
-        return opd_nm.squeeze()
+        return opd_nm, expi, P, reference_wave
 
-    
     def propagate_opd_map(self, opd_map, wave):
         '''
         Propagate an OPD map through a ZELDA sensor
-
         Parameters
         ----------
-        opd_map : array 
+        opd_map : array
             OPD map, in meter. The pupil format must be the same as
             the one used by the sensor.
-
         wave : float
             Wavelength, in meter
 
@@ -680,232 +689,50 @@ class Sensor():
         zelda_signal : array
             Expected ZELDA signal, in normalized intensity
         '''
-        
+
         # propagate OPD map
-        zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth, 
+        zelda_signal = ztools.propagate_opd_map(opd_map, self._mask_diameter, self._mask_depth,
                                                 self._mask_substrate, self._Fratio,
                                                 self._pupil_diameter, self._pupil, wave)
         return zelda_signal
 
-
     def mask_phase_shift(self, wave):
         '''
         Compute the phase delay introduced by the mask at a given wavelength
-        
+
         Parameters
         ----------
         wave: float
             wavelength of work, in m
-              
+
         Return
         ------
         phase_shift: float
             the mask phase delay, in radians
-        
+
         '''
-        
+
         mask_refractive_index = ztools.refractive_index(wave, self.mask_substrate)
-        phase_shift           = 2.*np.pi*(mask_refractive_index-1)*self.mask_depth/wave
-        
+        phase_shift = 2. * np.pi * (mask_refractive_index - 1) * self.mask_depth / wave
+
         return phase_shift
-        
+
     def mask_relative_size(self, wave):
         '''
         Compute the relative size of the phase mask in resolution element at wave
-        
+
         Parameters
         ----------
         wave: float
             wavelength of work, in m
-            
+
         Return
         ------
         mask_rel_size: float
             the mask relative size in lam/D
-        
+
         '''
-        
-        mask_rel_size = self.mask_diameter/(wave*self.mask_Fratio)
-        
+
+        mask_rel_size = self.mask_diameter / (wave * self.mask_Fratio)
+
         return mask_rel_size
-
-
-    def generalized_analyze(self, clear_pupil, zelda_pupil, wave, sign_mask=np.array([])):
-        '''Performs the ZELDA data analysis using the outputs provided by the read_files() function.
-
-        This method has a slightly more general point of view than the 'analyze' herebefore.
-
-        It makes a difference between the self.pupil object, which is the input pupil amplitude
-        transmission (can be anything, boolean or apodized) and a new self.pupil_mask object,
-        which is the ROI where the phase computation is performed in the final camera acquisitions.
-
-        This is particularly useful in two realistic cases:
-            - an apodization, such as gaussian, whose support has no clear limit, very dark areas
-                being subject to divergence in phase computation
-            - using ZELDA in a beam filtered during the propagation, such as the Focal Plane Mask (FPM)
-                of a coronagraph, typically Lyot-type coronagraphs (CLC, APLC, etc.)
-
-        This method does not call the create_reference_wave method, it estimates it from the clear_pupil data,
-        which is the intensity == square amplitude of the field.
-        For entrance pupil with pi rad shifts (or positive and negative amplitude) in the amplitude, the entrance pupil of the sensor setup.
-        an analytical correction can be applied with the 'sign_mask' argument, which a -1 and 1 array 2D array.
-        After estimation of the reference wave the square root of the clear_pupil data, this latter is multiplied
-        by the 'sign_mask' array.
-
-
-        Parameters
-        ----------
-        clear_pupil : array_like
-            Array containing the clear pupil data
-        zelda_pupil : array_like
-            Array containing the zelda pupil data
-        wave : float, optional
-            Wavelength of the data, in m.
-        sign_mask : array_like
-            Array containing sign correction for reference wave estimation
-
-        Returns
-        -------
-        opd : array_like
-            Optical path difference map in nanometers
-            (WHY NOT IN METERS LIKE INPUT WAVE? )
-        '''
-
-        # ++++++++++++++++++++++++++++++++++
-        # Pupil
-        # ++++++++++++++++++++++++++++++++++
-
-        pupil_diameter = self._pupil_diameter
-        pupil = self._pupil
-        pupil_mask = self._pupil_mask
-
-        # ++++++++++++++++++++++++++++++++++
-        # Reference wave(s)
-        # ++++++++++++++++++++++++++++++++++
-
-        # physical diameter and depth, in m
-        d_m = self._mask_diameter
-        z_m = self._mask_depth
-
-        # substrate refractive index
-        n_substrate = ztools.refractive_index(wave, self._mask_substrate)
-
-        # R_mask: zelda mask radius in lam0/D unit
-        R_mask = 0.5 * d_m / (wave * self._Fratio)
-
-        # Pixel dimensions
-
-        # array and pupil
-        array_dim = clear_pupil.shape[-1]
-        pupil_radius = pupil_diameter // 2
-
-        # mask sampling in the focal plane
-        D_mask_pixels = 300
-
-        # ++++++++++++++++++++++++++++++++++
-        # Estimation of the reference wave #
-        # ++++++++++++++++++++++++++++++++++
-
-        # --------------------------------
-        # plane A (Entrance pupil plane)
-
-        # definition of m1 parameter for the Matrix Fourier Transform (MFT)
-        # here equal to the mask size
-        m1 = 2 * R_mask * (array_dim / (2. * pupil_radius))
-        # padding_factor = (array_dim+self._padding_nb_pixels)/array_dim
-
-        # Using the clear_pupil to estimate the reference wave
-        if sign_mask.any():
-            P = np.sqrt(clear_pupil) * sign_mask    # P is from N'Diaye 2013
-            ampl_PA_noaberr = P.copy()
-        else:
-            P = np.sqrt(clear_pupil)  # P is from N'Diaye 2013
-            ampl_PA_noaberr = P.copy()
-
-        # --------------------------------
-        # plane B (Focal plane)
-
-        # calculation of the electric field in plane B with MFT within the Zernike
-        # sensor mask
-        ampl_PB_noaberr = mft.mft(ampl_PA_noaberr, array_dim, D_mask_pixels, m1, cpix=self.cpix)
-
-        # restriction of the MFT with the mask disk of diameter D_mask_pixels/2
-        ampl_PB_noaberr = ampl_PB_noaberr * aperture.disc(D_mask_pixels, D_mask_pixels, diameter=True, cpix=self.cpix,
-                                                          strict=False)
-
-        # --------------------------------
-        # plane C (Relayed pupil plane)
-
-        # mask phase shift theta (mask in transmission)
-        theta = 2 * np.pi * (n_substrate - 1) * z_m / wave
-
-        # phasor term associated  with the phase shift
-        expi = np.exp(1j * theta)
-
-        # --------------------------------
-        # Reference wave final calculation
-
-        reference_wave = mft.imft(ampl_PB_noaberr, D_mask_pixels, array_dim, m1, cpix=self.cpix) * self._pupil_mask
-
-        # ++++++++++++++++++++++++++++++++++
-        # Phase reconstruction from data
-        # ++++++++++++++++++++++++++++++++++
-
-        zelda_norm = zelda_pupil.copy()
-        zelda_norm = zelda_norm.squeeze()
-        zelda_norm[self._pupil_mask == 0] = 0
-
-        ###########################
-        # determinant calculation #
-        ###########################
-
-        # Setting the P amplitude to 0 outside the ROI
-        P[self._pupil_mask == 0] = 0
-
-        # Using the whole 2nd order formula from N'Diaye 2013
-        delta = expi.imag ** 2 - 2 / P * (reference_wave - P) * (1 - expi.real) ** 2 - (clear_pupil - zelda_norm) * (
-                    1 - expi.real) / (P * reference_wave)
-
-        delta = delta.real.squeeze()
-        delta = np.nan_to_num(delta)
-        delta[self._pupil_mask == 0] = 0
-
-        # check for negative values
-        neg_values = ((delta < 0) & self._pupil_mask)
-        neg_count = neg_values.sum()
-        ratio = neg_count / self._pupil_mask.sum() * 100
-
-        if not self.silent:
-            print('Negative values: {0} ({1:0.3f}%)'.format(neg_count, ratio))
-
-        # too many nagative values
-        if (ratio > ratio_limit):
-            raise NameError('Too many negative values in determinant (>1%)')
-
-        # replace negative values by 0
-        delta[neg_values] = 0
-
-        # phase calculation
-        theta = (1 / (1 - expi.real)) * (-expi.imag + np.sqrt(delta))
-        theta[self._pupil_mask == 0] = 0
-
-        # optical path difference in nm
-        cwave = wave
-        kw = 2 * np.pi / cwave
-        opd_nm = (1 / kw) * theta * 1e9
-
-        # remove piston in the ROI
-        opd_nm[self._pupil_mask] -= opd_nm[self._pupil_mask].mean()
-
-        # statistics
-        if not self.silent:
-            print('OPD statistics:')
-            print(' * min = {0:0.2f} nm'.format(opd_nm[self._pupil_mask].min()))
-            print(' * max = {0:0.2f} nm'.format(opd_nm[self._pupil_mask].max()))
-            print(' * std = {0:0.2f} nm'.format(opd_nm[self._pupil_mask].std()))
-
-
-        # Remove extra dimension
-        opd_nm = opd_nm.squeeze()
-
-        return opd_nm
