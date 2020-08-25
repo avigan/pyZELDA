@@ -13,7 +13,7 @@ Based on the formalism detailed in:
 import numpy as np
 
 
-def _mft(array, Na, Nb, m, inverse=False):
+def _mft(array, Na, Nb, m, inverse=False, cpix=False):
     '''
     Performs the matrix Fourier transform of an array.
     
@@ -39,6 +39,9 @@ def _mft(array, Na, Nb, m, inverse=False):
     
     inverse : bool, optional
         Control if the direct or inverse transform is performed. Default is `False`
+    
+    cpix : bool, optional
+        Center the MFT on one pixel, instead of between 4 pixels. Default is 'False'
         
     Returns
     -------
@@ -51,12 +54,21 @@ def _mft(array, Na, Nb, m, inverse=False):
     else:
         sign = -1
     
+    # For pixel centering
+    offsetA = 0
+    offsetB = 0
+    
+    # If centering between 4 pixels
+    if not(cpix):
+        offsetA = .5/Na
+        offsetB = .5/Nb
+    
     coeff = m / (Na * Nb)
     
-    x = np.linspace(-0.5, 0.5, Na, endpoint=False, dtype=np.double)
+    x = np.linspace(-0.5, 0.5, Na, endpoint=False, dtype=np.double) + offsetA
     y = x
     
-    u = m * np.linspace(-0.5, 0.5, Nb, endpoint=False, dtype=np.double)
+    u = m * (np.linspace(-0.5, 0.5, Nb, endpoint=False, dtype=np.double) + offsetB)
     v = u
     
     A1 = np.exp(sign*2j*np.pi*np.outer(u, x))
@@ -67,7 +79,7 @@ def _mft(array, Na, Nb, m, inverse=False):
     return B
 
 
-def mft(array, Na, Nb, m):
+def mft(array, Na, Nb, m, cpix=False):
     '''
     Performs the matrix Fourier transform of an array.
     
@@ -90,17 +102,20 @@ def mft(array, Na, Nb, m):
     
     m : float
         Number of lambda/D elements in Fourier space
-        
+    
+    cpix : bool, optional
+        Center the MFT on one pixel, instead of between 4 pixels. Default is 'False'
+         
     Returns
     -------
     return_value : array
         MFT of the input array
     '''
     
-    return _mft(array, Na, Nb, m, inverse=False)
+    return _mft(array, Na, Nb, m, inverse=False, cpix=cpix)
 
 
-def imft(array, Na, Nb, m):
+def imft(array, Na, Nb, m, cpix=True):
     '''
     Performs the inverse matrix Fourier transform of an array.
     
@@ -130,7 +145,7 @@ def imft(array, Na, Nb, m):
         MFT of the input array
     '''
     
-    return _mft(array, Na, Nb, m, inverse=True)
+    return _mft(array, Na, Nb, m, inverse=True, cpix=cpix)
 
 
 if __name__ == "__main__":
