@@ -332,7 +332,7 @@ def read_info(root):
     return info_files, info_frames, info_frames_ref
     
 
-def process(root, sequence_type='temporal'):
+def process(root, sequence_type='temporal', correction_factor=1):
     '''Process a complete sequence of ZELDA data
 
     The processing centers the data and performs the ZELDA analysis to
@@ -347,6 +347,10 @@ def process(root, sequence_type='temporal'):
         Type of sequence. The possible values are temporal, derotator
         or telescope. The processing of the data will be different
         depending on the type of the sequence. Default is temporal
+
+    correction_factor : float
+        Amplitude correction factor for the OPD maps. 
+        Default is 1 (no correction)
 
     '''
 
@@ -377,6 +381,10 @@ def process(root, sequence_type='temporal'):
 
             # analyse
             opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
+
+            # correction factor
+            if correction_factor != 1:
+                opd_cube *= correction_factor
 
             fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
 
@@ -427,7 +435,11 @@ def process(root, sequence_type='temporal'):
             
                 # analyse
                 opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
-            
+                
+            # correction factor
+            if correction_factor != 1:
+                opd_cube *= correction_factor
+
             fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
             del opd_cube
     elif sequence_type == 'derotator':
