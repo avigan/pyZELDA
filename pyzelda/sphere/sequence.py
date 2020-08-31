@@ -332,7 +332,7 @@ def read_info(root):
     return info_files, info_frames, info_frames_ref
     
 
-def process(root, sequence_type='temporal', correction_factor=1):
+def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
     '''Process a complete sequence of ZELDA data
 
     The processing centers the data and performs the ZELDA analysis to
@@ -352,6 +352,8 @@ def process(root, sequence_type='temporal', correction_factor=1):
         Amplitude correction factor for the OPD maps. 
         Default is 1 (no correction)
 
+    unit : str
+        Unit for the processed cube. Can me either m, um or nm. Default is m
     '''
 
     # read info
@@ -367,7 +369,17 @@ def process(root, sequence_type='temporal', correction_factor=1):
 
     # create sensor
     z = zelda.Sensor('SPHERE-IRDIS')
-        
+
+    # apply unit and correction factor
+    if unit == 'm':
+        pass
+    elif unit == 'um':
+        correction_factor *= 1e6
+    elif unit == 'nm':
+        correction_factor *= 1e9
+    else:
+        raise ValueError(f'Unknown output unit {unit}')
+    
     # read and analyse
     print('ZELDA analysis')
     if sequence_type == 'temporal':
@@ -382,9 +394,8 @@ def process(root, sequence_type='temporal', correction_factor=1):
             # analyse
             opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
 
-            # correction factor
-            if correction_factor != 1:
-                opd_cube *= correction_factor
+            # correction factor and unit
+            opd_cube *= correction_factor
 
             fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
 
@@ -436,9 +447,8 @@ def process(root, sequence_type='temporal', correction_factor=1):
                 # analyse
                 opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
                 
-            # correction factor
-            if correction_factor != 1:
-                opd_cube *= correction_factor
+            # correction factor and unit
+            opd_cube *= correction_factor
 
             fits.writeto(os.path.join(root, 'processed', zelda_pupil_files[f]+'_opd.fits'), opd_cube, overwrite=True)
             del opd_cube
