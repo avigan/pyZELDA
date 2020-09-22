@@ -412,7 +412,6 @@ class Sensor():
         ratio_limit : float
             Percentage of negative pixel above which the analysis is considered as
             failed. Default value is 1%
-
         use_arbitrary_amplitude : boolean, default is False
             If set to True, will use the formula (12) in N'Diaye 2013 that considers the pupil amplitude
             P as arbitrary. Otherwise will use the standard approximation P = 1
@@ -428,7 +427,6 @@ class Sensor():
         refwave_from_clear : bool, default is False
             if True, the reference wave will be calculated with the square root of the clear image.
             Otherwise, it will be computed from the self._pupil theoretical data.
-
         Returns
         -------
         opd : array_like
@@ -507,14 +505,11 @@ class Sensor():
         # ----------------------------------------------
 
         for idx, w in enumerate(waves):
-            print(wave)
 
             key = hash((w, bytes(clear_array_for_refw[idx])))
 
             if key not in keys:
                 if refwave_from_clear:
-
-                    print('hello_there_too')
                     reference_wave, expi = ztools.create_reference_wave(
                         self._mask_diameter, self._mask_depth,
                         self._mask_substrate, self._Fratio,
@@ -527,70 +522,6 @@ class Sensor():
                         pupil_diameter, pupil, w, clear=np.array([]),
                         sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
 
-                self._mask_diffraction_prop[key] = (reference_wave, expi)
-        
-        # The reference waves are stored in a dictionnary to speed up the execution
-        # of the method analyze when using several times the same configuration.
-        # The reference waves depends on the wavelength, and if it is computed 
-        # with the clear data, then it also depends on the clear. Therefore, 
-        # the dictionnary keys are a hash of the tuple (wave, bytes(clear))
-        
-        keys = self._mask_diffraction_prop.keys()
-        
-        
-        # Creating arrays for easy access of clear and wavelength values. 
-        # If the only one value is given, then arrays are filled with the same
-        # value nframes_zelda times.
-        
-        if nwave == 1:
-            waves = wave[0] * np.ones(nframes_zelda)
-        else:
-            waves = wave.copy()
-                
-        # If using the calculation of reference wave from clear, then the list 
-        # of clears is created with real clear data
-        
-        if refwave_from_clear:
-            
-            if nframes_clear == 1:
-                clear_array_for_refw = np.full((nframes_zelda, clear_pupil.shape[1], 
-                                                clear_pupil.shape[2]), clear_pupil[0])
-            
-            else:
-                clear_array_for_refw = clear_pupil.copy()
-            
-        # If using the calculation of reference wave from theoretical pupil, 
-        # this array is filled with self.pupil
-        else:
-            clear_array_for_refw = np.full((nframes_zelda, clear_pupil.shape[1], 
-                                            clear_pupil.shape[2]), self.pupil)
-            
-        
-        # Creation of reference waves not in dictionnary 
-        # ----------------------------------------------
-        
-        for idx, w in enumerate(waves):
-            print(wave)
-            
-            key = hash((w, bytes(clear_array_for_refw[idx])))
-            
-            if key not in keys:
-                if refwave_from_clear:
-                    
-                    print('hello_there_too')
-                    reference_wave, expi = ztools.create_reference_wave(
-                            self._mask_diameter, self._mask_depth,
-                            self._mask_substrate, self._Fratio,
-                            pupil_diameter, pupil, w, clear=clear_array_for_refw[idx],
-                            sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
-                else:
-                    reference_wave, expi = ztools.create_reference_wave(
-                            self._mask_diameter, self._mask_depth,
-                            self._mask_substrate, self._Fratio,
-                            pupil_diameter, pupil, w, clear=np.array([]),
-                            sign_mask=sign_mask, pupil_roi=pupil_roi, cpix=cpix)
-                
-        
                 self._mask_diffraction_prop[key] = (reference_wave, expi)
 
         # ++++++++++++++++++++++++++++++++++
@@ -627,7 +558,7 @@ class Sensor():
                 key = hash((cwave, bytes(clear)))
             else:
                 key = hash((cwave, bytes(self.pupil)))
-            
+
             # mask_diffraction_prop array contains the mask diffracted properties:
             #  - [0] reference wave
             #  - [1] dephasing term
@@ -644,9 +575,9 @@ class Sensor():
                 ###########################
 
                 if sign_mask.any():
-                    P = np.sqrt(clear) * sign_mask  # P from N'Diaye 2013
+                    P = np.nan_to_num(np.sqrt(clear)) * sign_mask  # P from N'Diaye 2013
                 else:
-                    P = np.sqrt(clear)
+                    P = np.nan_to_num(np.sqrt(clear))
 
                 P[pupil_roi == 0] = 0
 
@@ -690,17 +621,17 @@ class Sensor():
             # phase calculation
             theta = (1 / (1 - expi.real)) * (-expi.imag + np.sqrt(delta))
             if pupil_roi.any():
-                theta[pupil_roi==0] = 0
+                theta[pupil_roi == 0] = 0
             else:
                 theta[~pup] = 0
 
             # optical path difference in nm
             kw = 2 * np.pi / cwave
-            opd_nm = (1 / kw) * theta # *1e9
+            opd_nm = (1 / kw) * theta  *1e9
 
             # remove piston
             if pupil_roi.any():
-                opd_nm[pupil_roi==True] -= opd_nm[pupil_roi==True].mean()
+                opd_nm[pupil_roi == True] -= opd_nm[pupil_roi == True].mean()
             else:
                 opd_nm[pup] -= opd_nm[pup].mean()
 
@@ -717,7 +648,7 @@ class Sensor():
         # variable name change
         opd_nm = zelda_pupil.squeeze()
 
-        return opd_nm#, reference_wave #, expi, P, reference_wave
+        return opd_nm
 
     def propagate_opd_map(self, opd_map, wave):
         '''
@@ -729,7 +660,6 @@ class Sensor():
             the one used by the sensor.
         wave : float
             Wavelength, in meter
-
         Returns
         -------
         zelda_signal : array
@@ -745,17 +675,14 @@ class Sensor():
     def mask_phase_shift(self, wave):
         '''
         Compute the phase delay introduced by the mask at a given wavelength
-
         Parameters
         ----------
         wave: float
             wavelength of work, in m
-
         Return
         ------
         phase_shift: float
             the mask phase delay, in radians
-
         '''
 
         mask_refractive_index = ztools.refractive_index(wave, self.mask_substrate)
@@ -766,17 +693,14 @@ class Sensor():
     def mask_relative_size(self, wave):
         '''
         Compute the relative size of the phase mask in resolution element at wave
-
         Parameters
         ----------
         wave: float
             wavelength of work, in m
-
         Return
         ------
         mask_rel_size: float
             the mask relative size in lam/D
-
         '''
 
         mask_rel_size = self.mask_diameter / (wave * self.mask_Fratio)
