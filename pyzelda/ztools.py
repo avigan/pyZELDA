@@ -429,7 +429,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
     # Otherwise, the analytical pupil will be used.
 
     if clear.any():
-        P = np.sqrt(clear)
+        P = np.nan_to_num(np.sqrt(clear))
         if sign_mask.any():
             P = P * sign_mask
         ampl_PA_noaberr = P
