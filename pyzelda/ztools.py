@@ -479,7 +479,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
 
 
 def propagate_opd_map(opd_map, mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                      pupil_diameter, pupil, wave, clear=np.array([]), sign_mask=np.array([])):
+                      pupil_diameter, pupil, wave):
     '''
     Propagate an OPD map through a ZELDA sensor
     Parameters
