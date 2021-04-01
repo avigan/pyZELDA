@@ -40,8 +40,9 @@ If you use this software, or part it, please reference the code from the Astroph
 
 - [Vigan & N'Diaye, 2018, ascl:1806.003](https://ui.adsabs.harvard.edu/abs/2018ascl.soft06003V/abstract)
 
-Authors
--------
+Authors and contributors
+------------------------
 
 - Arthur Vigan, [arthur.vigan@lam.fr](mailto:arthur.vigan@lam.fr)
 - Mamadou N'Diaye, [mamadou.ndiaye@oca.eu](mailto:mamadou.ndiaye@oca.eu)
+- Raphaël Pourcelot, [raphael.pourcelot@oca.eu](mailto:raphael.pourcelot@oca.eu)
