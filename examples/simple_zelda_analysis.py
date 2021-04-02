@@ -7,6 +7,8 @@ import pyzelda.utils.aperture as aperture
 
 from pathlib import Path
 
+#%% parameters
+
 # path = Path('/Users/mndiaye/Dropbox/python/zelda/pyZELDA/')
 path = Path('/Users/avigan/Work/GitHub/pyZELDA/data/')
 # path = Path('D:/Programmes/GitHub/pyZELDA/')
@@ -26,35 +28,37 @@ zelda_pupil_files = ['SPHERE_GEN_IRDIS057_0001']
 dark_file  = 'SPHERE_GEN_IRDIS057_0003'
 pupil_tel  = True
 
-# ZELDA analysis
+#%% ZELDA analysis
 z = zelda.Sensor('SPHERE-IRDIS', pupil_telescope=pupil_tel)
 
 clear_pupil, zelda_pupil, center = z.read_files(path, clear_pupil_files, zelda_pupil_files, dark_file,
-                                                collapse_clear=True, collapse_zelda=True)
+                                                collapse_clear=True, collapse_zelda=False)
 
 opd_map = z.analyze(clear_pupil, zelda_pupil, wave=wave)
+if opd_map.ndim == 3:
+    opd_map = opd_map.mean(axis=0)
 
 # decomposition on Zernike polynomials
-basis, coeff, opd_zern = ztools.zernike_expand(opd_map.mean(axis=0), 20)
+basis, coeff, opd_zern = ztools.zernike_expand(opd_map, 20)
 
-# plot
+#%% plot
 fig = plt.figure(0, figsize=(16, 4))
 plt.clf()
 
 ax = fig.add_subplot(141)
-ax.imshow(clear_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000, origin=1)
+ax.imshow(clear_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=2000)
 ax.set_title('Clear pupil')
 
 ax = fig.add_subplot(142)
-ax.imshow(zelda_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=15000, origin=1)
+ax.imshow(zelda_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=2000)
 ax.set_title('ZELDA pupil')
 
 ax = fig.add_subplot(143)
-ax.imshow(opd_map.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma', origin=1)
+ax.imshow(opd_map, aspect='equal', vmin=-150, vmax=150, cmap='magma')
 ax.set_title('OPD map')
 
 ax = fig.add_subplot(144)
-cax = ax.imshow(opd_zern.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma', origin=1)
+cax = ax.imshow(opd_zern.mean(axis=0), aspect='equal', vmin=-150, vmax=150, cmap='magma')
 ax.set_title('Zernike projected OPD map')
 
 cbar = fig.colorbar(cax)
