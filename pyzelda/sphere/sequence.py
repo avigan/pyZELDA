@@ -1335,16 +1335,16 @@ def matrix_process(root, matrix, ncpu=1):
     return vec_mean, vec_std
 
 
-def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
-                                 nzern=80, filter_cutoff=40, pupil_mask=None,
-                                 turbulence_residuals=False,
-                                 psd_compute=True, psd_cutoff=40,
-                                 ncpa_sliding_mean=10, save_intermediate=False,
-                                 save_product=False, save_ncpa=True, test_mode=True):
-    '''Implements the subtraction of the internal turbulence in a long
+def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
+                            nzern=80, filter_cutoff=40, pupil_mask=None,
+                            turbulence_residuals=False,
+                            psd_compute=True, psd_cutoff=40,
+                            ncpa_sliding_mean=10, save_intermediate=False,
+                            save_product=False, save_ncpa=True, test_mode=True):
+    '''Implements the fitting and subtraction of the internal turbulence in a long
     OPD sequence
 
-    The subtract_turbulence() method estimates the contribution of the
+    The fit_internal_turbulence() method estimates the contribution of the
     internal turbulence in a sequence, subtracts it to the data and
     calculates the final quasi-static NCPA variations. The procedure
     is the following:
@@ -1562,6 +1562,160 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     del data
     del turb_reconstructed
     
+    # compute PSD of the final sequence
+    if psd_compute:
+        log.info('Compute PSD of data without turbulence')
+        psd_cube = compute_psd(root, data_no_turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+
+    # NCPA estimation
+    log.info('Compute final NCPA')
+    ncpa_cube = subtract_mean_opd(root, data_no_turb, nimg=ncpa_sliding_mean)
+
+    if save_ncpa:
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
+    
+    # compute PSD of the final sequence
+    if psd_compute:
+        log.info('Compute PSD of final NCPA')
+        psd_cube = compute_psd(root, ncpa_cube, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+    
+    print()
+    log.info('Finished!')
+    print('Finished!')
+    print()
+
+    
+def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
+                                           pupil_mask=None, turbulence_residuals=False,
+                                           psd_compute=True, psd_cutoff=40,
+                                           ncpa_sliding_mean=10, save_intermediate=False,
+                                           save_product=False, save_ncpa=True, test_mode=True):
+    '''Implements a simpler estimation and subtraction of the internal turbulence in a long
+    OPD sequence
+
+    
+    Parameters
+    ----------
+    root : str
+        Path to the working directory
+    
+    turb_sliding_mean : int
+        Number of images over which the OPD maps will be averaged to
+        compute the sliding mean. Should be even. Default is 30
+        
+    pupil_mask : array
+        Mask defining the pupil.
+
+    turbulence_residuals : bool 
+        Compute the turbulence residuals and related statistics. 
+        Default is False
+    
+    psd_compute : bool
+        Perform all PSD computations. Can be disabled to save time.
+        Default is True.
+
+    psd_cutoff : float    
+        Spatial frequency cutoff for the calculation of the turbulence
+        residuals PSD. Default is 40
+
+    ncpa_sliding_mean : int
+        Number of images over which the OPD maps will be averaged to
+        compute the sliding mean used for the final NCPA estimation.
+        Should be even. Default is 10
+        
+    save_product : bool
+        Save the OPD after turbulence subtraction. Default is False
+
+    save_ncpa : bool
+        Save final quasi-static NCPA cube after turbulence subtraction.
+        Default is False.
+
+    test_mode : bool
+        If True, limits the number of frames in the data to 100. Default is True
+    '''
+
+    log.info('Start turbulence subtraction')
+    
+    suffix = f'method=simple_smean={turb_sliding_mean:03d}'
+
+    # root
+    if root is None:
+        raise ValueError('root must contain the path to the data!')
+        
+    # read data
+    log.info('Read data')
+    data = fits.getdata(root / 'products' / 'opd_cube.fits')
+    if test_mode:
+        data = data[0:100]
+
+    # pupil mask
+    if pupil_mask is None:
+        pupil_mask = (data[0] != 0)
+    else:
+        # hide values outside of the pupil
+        log.info('Hide values outside of the pupil')
+        for i in range(len(data)):
+            data[i] = data[i]*pupil_mask
+    
+    # sliding mean over avg_time sec ==> provides a simple estimation of the data without turbulence
+    log.info('Compute sliding mean')
+    data_no_turb = sliding_mean(root, data, nimg=turb_sliding_mean)
+
+    # subtract sliding mean to isolate turbulence
+    log.info('Subtract sliding mean')
+    turb = data - data_no_turb
+
+    # free memory
+    del data
+        
+    if save_product:
+        fits.writeto(root / 'products' / f'sequence_turbulence_{suffix}.fits', turb, overwrite=True)
+    
+    # compute PSD of turbulence
+    if psd_compute:
+        log.info('Compute PSD of turbulence')    
+        psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of turbulence
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / f'sequence_turbulence_{suffix:s}_psd.fits', rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+
+    # free memory
+    del turb
+        
+    # save data without turbulence
+    if save_product:
+        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{suffix:s}.fits', data_no_turb, overwrite=True)
+
     # compute PSD of the final sequence
     if psd_compute:
         log.info('Compute PSD of data without turbulence')
