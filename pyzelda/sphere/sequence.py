@@ -1608,8 +1608,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
     
 def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
-                                           pupil_mask=None, turbulence_residuals=False,
-                                           psd_compute=True, psd_cutoff=40,
+                                           pupil_mask=None, psd_compute=True, psd_cutoff=40,
                                            ncpa_sliding_mean=10, save_intermediate=False,
                                            save_product=False, save_ncpa=True, test_mode=True):
     '''Implements a simpler estimation and subtraction of the internal turbulence in a long
@@ -1628,10 +1627,6 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     pupil_mask : array
         Mask defining the pupil.
 
-    turbulence_residuals : bool 
-        Compute the turbulence residuals and related statistics. 
-        Default is False
-    
     psd_compute : bool
         Perform all PSD computations. Can be disabled to save time.
         Default is True.
@@ -1714,7 +1709,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         
     # save data without turbulence
     if save_product:
-        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{suffix:s}.fits', data_no_turb, overwrite=True)
+        fits.writeto(root / 'products' / f'sequence_data_cube_no_turbulence_{suffix:s}.fits', data_no_turb, overwrite=True)
 
     # compute PSD of the final sequence
     if psd_compute:
@@ -1727,7 +1722,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         # save as FITS table
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
         rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
-        fits.writeto(root / 'products' / 'sequence_data_cube_no_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+        fits.writeto(root / 'products' / f'sequence_data_cube_no_turbulence_{suffix:s}_psd.fits', rec, overwrite=True)
 
         # free memory
         del psd_cube
@@ -1737,7 +1732,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     ncpa_cube = subtract_mean_opd(root, data_no_turb, nimg=ncpa_sliding_mean)
 
     if save_ncpa:
-        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
+        fits.writeto(root / 'products' / f'sequence_ncpa_cube_{suffix:s}.fits', ncpa_cube, overwrite=True)
     
     # compute PSD of the final sequence
     if psd_compute:
@@ -1750,7 +1745,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         # save as FITS table
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
         rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
-        fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+        fits.writeto(root / 'products' / f'sequence_ncpa_cube_{suffix:s}_psd.fits', rec, overwrite=True)
 
         # free memory
         del psd_cube
