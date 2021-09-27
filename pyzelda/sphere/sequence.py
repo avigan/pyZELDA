@@ -1422,8 +1422,10 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
     log.info('Start turbulence subtraction')
     
     if method.lower() == 'zernike':
+        log.info(f' > method={method}, smean={turb_sliding_mean:03d}, nzern={nzern:03d}')
         suffix = 'method={:s}_smean={:03d}_nzern={:03d}'.format(method, turb_sliding_mean, nzern)
     elif method.lower() == 'fft':
+        log.info(f' > method={method}, smean={turb_sliding_mean:03d}, fcutoff={filter_cutoff:03d}')
         suffix = 'method={:s}_smean={:03d}_fcutoff={:.1f}'.format(method, turb_sliding_mean, filter_cutoff)
     else:
         raise ValueError('Unknown subtraction method {0}'.format(method))
@@ -1652,7 +1654,8 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     '''
 
     log.info('Start turbulence subtraction')
-    
+    log.info(f' > method={method}, smean={turb_sliding_mean:03d}')
+
     suffix = f'method=simple_smean={turb_sliding_mean:03d}'
 
     # root
