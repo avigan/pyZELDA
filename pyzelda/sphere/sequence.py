@@ -312,22 +312,31 @@ def read_info(root):
     '''
 
     # read files info
-    path = os.path.join(root, 'products', 'info_files.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_files.csv does not exist in {0}'.format(root))    
-    info_files = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_files.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_files.csv does not exist in {0}'.format(root))    
+        info_files = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_files = None
         
     # read files info
-    path = os.path.join(root, 'products', 'info_frames.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_frames.csv does not exist in {0}'.format(root))
-    info_frames = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_frames.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_frames.csv does not exist in {0}'.format(root))
+        info_frames = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_frames = None
 
     # reference frames info
-    path = os.path.join(root, 'products', 'info_frames_ref.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
-    info_frames_ref = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_frames_ref.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
+        info_frames_ref = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_frames_ref = None
     
     return info_files, info_frames, info_frames_ref
     
