@@ -429,8 +429,8 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
             
         # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
         for idx, row in info_frames.iterrows():
-            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).idxmin(), :]
-
+            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).abs().idxmin(), :]
+            
             info_frames.loc[idx, 'file_ref'] = ref.file
             info_frames.loc[idx, 'img_ref']  = ref.img
 
@@ -460,13 +460,13 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
                     ref = file_ref
 
                     print('  ==> reading CLEAR pupils {}'.format(ref))
-                    clear_pupil, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
-                                                      zelda_pupil_files[f], dark_files,
-                                                      collapse_clear=False, collapse_zelda=False,
-                                                      center=center)
+                    clear_pupils, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
+                                                       zelda_pupil_files[f], dark_files,
+                                                       collapse_clear=False, collapse_zelda=False,
+                                                       center=center)
             
                 # analyse
-                opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
+                opd_cube[img] = z.analyze(clear_pupils[img_ref], zelda_pupils[img], wave=1.642e-6)
                 
             # correction factor and unit
             opd_cube *= correction_factor
