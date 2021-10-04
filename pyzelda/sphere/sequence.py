@@ -63,6 +63,32 @@ def parallatic_angle(ha, dec, geolat):
     return np.degrees(pa)
 
 
+def altitude(ha, dec, geolat):
+    '''
+    Altitude of a source in degrees
+
+    Parameters
+    ----------
+    ha : array_like
+        Hour angle, in hours
+
+    dec : float
+        Declination, in degrees
+
+    geolat : float
+        Observatory declination, in degrees
+
+    Returns
+    -------
+    alt : array_like
+        Telescope altitude values
+    '''
+
+    alt = np.arcsin(np.sin(dec) * np.sin(geolat) + np.cos(dec) * np.cos(ha) * np.cos(geolat))
+
+    return np.degrees(alt)
+
+
 def sort_files(root):
     '''Sort the raw files of a ZELDA sequence
 
@@ -184,6 +210,10 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
@@ -203,7 +233,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
-        info_frames.loc[idx0:idx1, 'drot']         = drot
+        info_frames.loc[idx0:idx1, 'alt']        = alt
+        info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -265,6 +298,10 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
@@ -284,7 +321,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
+        info_frames.loc[idx0:idx1, 'alt']        = alt
         info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -425,8 +465,8 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
                                                          collapse_clear=True, collapse_zelda=True)
 
         # apply offset on center
-        center = center[0] + center_offset[0], center[1] + center_offset[1]
-            
+        center = center[0] - center_offset[0], center[1] - center_offset[1]
+        
         # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
         for idx, row in info_frames.iterrows():
             ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).abs().idxmin(), :]
