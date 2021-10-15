@@ -63,6 +63,32 @@ def parallatic_angle(ha, dec, geolat):
     return np.degrees(pa)
 
 
+def altitude(ha, dec, geolat):
+    '''
+    Altitude of a source in degrees
+
+    Parameters
+    ----------
+    ha : array_like
+        Hour angle, in hours
+
+    dec : float
+        Declination, in degrees
+
+    geolat : float
+        Observatory declination, in degrees
+
+    Returns
+    -------
+    alt : array_like
+        Telescope altitude values
+    '''
+
+    alt = np.arcsin(np.sin(dec) * np.sin(geolat) + np.cos(dec) * np.cos(ha) * np.cos(geolat))
+
+    return np.degrees(alt)
+
+
 def sort_files(root):
     '''Sort the raw files of a ZELDA sequence
 
@@ -131,6 +157,7 @@ def sort_files(root):
     #
     # ZELDA frames information
     #
+    print('ZELDA frames')
     nframes = int(info_files.loc[info_files.type == 'Z', 'NDIT'].sum())
     columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
                'time', 'time_start', 'time_end',
@@ -183,6 +210,10 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
@@ -194,7 +225,7 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
         info_frames.loc[idx0:idx1, 'coro']       = row.coro
         info_frames.loc[idx0:idx1, 'filt']       = row.filt
-        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'DIT']        = np.full(int(NDIT), DIT)
         info_frames.loc[idx0:idx1, 'time_start'] = time_beg
         info_frames.loc[idx0:idx1, 'time']       = time_mid
         info_frames.loc[idx0:idx1, 'time_end']   = time_end
@@ -202,7 +233,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
-        info_frames.loc[idx0:idx1, 'drot']         = drot
+        info_frames.loc[idx0:idx1, 'alt']        = alt
+        info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -212,6 +246,7 @@ def sort_files(root):
     #
     # CLEAR frames information
     #
+    print('CLEAR frames')
     nframes = int(info_files.loc[info_files.type == 'R', 'NDIT'].sum())
     columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
                'drot', 'time', 'time_start', 'time_end')
@@ -263,18 +298,22 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
         idx1 = index+NDIT-1
-
+        
         info_frames.loc[idx0:idx1, 'file']       = row.file
         info_frames.loc[idx0:idx1, 'img']        = np.arange(0, NDIT, dtype=int)
         info_frames.loc[idx0:idx1, 'nd_cal']     = row.nd_cal
         info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
         info_frames.loc[idx0:idx1, 'coro']       = row.coro
         info_frames.loc[idx0:idx1, 'filt']       = row.filt
-        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'DIT']        = np.full(int(NDIT), DIT)
         info_frames.loc[idx0:idx1, 'time_start'] = time_beg
         info_frames.loc[idx0:idx1, 'time']       = time_mid
         info_frames.loc[idx0:idx1, 'time_end']   = time_end
@@ -282,7 +321,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
-        info_frames.loc[idx0:idx1, 'drot']         = drot
+        info_frames.loc[idx0:idx1, 'alt']        = alt
+        info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -341,7 +383,7 @@ def read_info(root):
     return info_files, info_frames, info_frames_ref
     
 
-def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
+def process(root, sequence_type='temporal', correction_factor=1, unit='m', center_offset=(0, 0)):
     '''Process a complete sequence of ZELDA data
 
     The processing centers the data and performs the ZELDA analysis to
@@ -363,6 +405,10 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
 
     unit : str
         Unit for the processed cube. Can me either m, um or nm. Default is m
+
+    center_offset : tuple
+        Offset (dx, dy) to be applied on the center automatically determined by
+        pyZELDA for the pupil. Default is (0, 0)
     '''
 
     # read info
@@ -381,11 +427,11 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
 
     # apply unit and correction factor
     if unit == 'm':
-        pass
+        correction_factor *= 1e-9
     elif unit == 'um':
-        correction_factor *= 1e6
+        correction_factor *= 1e-3
     elif unit == 'nm':
-        correction_factor *= 1e9
+        pass
     else:
         raise ValueError(f'Unknown output unit {unit}')
     
@@ -400,6 +446,9 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                                                              zelda_pupil_files[f], dark_files,
                                                              collapse_clear=True, collapse_zelda=False)
 
+            # apply offset on center
+            center = center[0] + center_offset[0], center[1] + center_offset[1]
+            
             # analyse
             opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
 
@@ -415,17 +464,20 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                                                          zelda_pupil_files[0], dark_files,
                                                          collapse_clear=True, collapse_zelda=True)
 
+        # apply offset on center
+        center = center[0] - center_offset[0], center[1] - center_offset[1]
+        
         # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
         for idx, row in info_frames.iterrows():
-            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).idxmin(), :]
-
+            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).abs().idxmin(), :]
+            
             info_frames.loc[idx, 'file_ref'] = ref.file
             info_frames.loc[idx, 'img_ref']  = ref.img
 
         sci = None
         for f in range(len(zelda_pupil_files)):
             print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
-
+            
             # read ZELDA pupils
             if sci != zelda_pupil_files[f]:
                 sci = zelda_pupil_files[f]
@@ -448,13 +500,13 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                     ref = file_ref
 
                     print('  ==> reading CLEAR pupils {}'.format(ref))
-                    clear_pupil, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
-                                                      zelda_pupil_files[f], dark_files,
-                                                      collapse_clear=False, collapse_zelda=False,
-                                                      center=center)
+                    clear_pupils, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
+                                                       zelda_pupil_files[f], dark_files,
+                                                       collapse_clear=False, collapse_zelda=False,
+                                                       center=center)
             
                 # analyse
-                opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
+                opd_cube[img] = z.analyze(clear_pupils[img_ref], zelda_pupils[img], wave=1.642e-6)
                 
             # correction factor and unit
             opd_cube *= correction_factor
@@ -1663,7 +1715,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     '''
 
     log.info('Start turbulence subtraction')
-    log.info(f' > method={method}, smean={turb_sliding_mean:03d}')
+    log.info(f' > method=simple, smean={turb_sliding_mean:03d}')
 
     suffix = f'method=simple_smean={turb_sliding_mean:03d}'
 
