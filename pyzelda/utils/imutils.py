@@ -154,7 +154,7 @@ def shift(array, shift_value, method='fft', mode='constant', cval=0):
     elif isinstance(shift_value, (int, float)):
         shift_value = np.full(Ndim, shift_value)
     else:
-        raise ValueError('Shift value of type \'{0}\' is not allowed'.format(type(shift).__name__))    
+        raise ValueError('Shift value of type \'{0}\' is not allowed'.format(type(shift_value).__name__))    
 
     # check if shift values are int and automatically change method in case they are
     if (shift_value.dtype.kind == 'i'):
@@ -948,7 +948,7 @@ def fix_badpix_vip(img, bpm, box=5):
     return img_clean
 
 
-def fix_badpix(img, bpm, npix=8, weight=False):
+def fix_badpix(img, bpm, npix=8, weight=False, dmax=10):
     '''Corrects the bad pixels, marked in the bad pixel mask.
 
     It will fill in bad pixels by finding the NPIX nearest good
@@ -978,6 +978,10 @@ def fix_badpix(img, bpm, npix=8, weight=False):
         Weigh good pixel by inverse of their distance in the averaging
         process. Default is False
     
+    dmax : int
+        Maximum distance from the bad pixel over which good pixels are 
+        searched for. Default is 10 pixels
+
     Return
     ------
     img_clean : array_like
@@ -996,7 +1000,7 @@ def fix_badpix(img, bpm, npix=8, weight=False):
 
     # usefull parameters
     ddmin = 2
-    ddmax = 100
+    ddmax = dmax
     shape = img.shape
 
     # create default distance array
@@ -1005,6 +1009,7 @@ def fix_badpix(img, bpm, npix=8, weight=False):
     dist_default = np.sqrt(xx**2 + yy**2)
 
     bpm = np.logical_not(bpm)
+    
     for cx, cy in zip(bp[1], bp[0]):
         # default search box is 2*dd+1 pixel
         dd = ddmin
@@ -1050,6 +1055,10 @@ def fix_badpix(img, bpm, npix=8, weight=False):
         good_pix  = good_pix[ii]
         good_dist = good_dist[ii]
 
+        # make sure we have some data to work with
+        if len(good_dist) < npix:
+            continue
+
         # get values of relevant pixels
         mm = np.where(good_dist <= good_dist[npix-1])
         good_pix  = good_pix[mm]
@@ -1080,7 +1089,7 @@ def fix_badpix(img, bpm, npix=8, weight=False):
 ####################################################################################
 
 
-def profile(img, type='mean', step=1, mask=None, center=None, rmax=0, clip=True, exact=False):
+def profile(img, ptype='mean', step=1, mask=None, center=None, rmax=0, clip=True, exact=False):
     '''
     Azimuthal statistics of an image
 
@@ -1117,6 +1126,9 @@ def profile(img, type='mean', step=1, mask=None, center=None, rmax=0, clip=True,
     rad : array
         Separation vector, in pixel
     '''
+    
+    # make sure we work on a copy
+    img = img.copy()
     
     # array dimensions
     dimx = img.shape[1]
@@ -1179,23 +1191,23 @@ def profile(img, type='mean', step=1, mask=None, center=None, rmax=0, clip=True,
     # calculate profile
     rad  = r_uniq_val[0:i_max]
 
-    type = type.lower()
+    ptype = ptype.lower()
     if step == 1:
         # fast statistics if step=1
-        if type == 'mean':
+        if ptype == 'mean':
             prof = np.nanmean(polar, axis=1)
-        elif type == 'std':
+        elif ptype == 'std':
             prof = np.nanstd(polar, axis=1, ddof=1)
-        elif type == 'var':
+        elif ptype == 'var':
             prof = np.nanvar(polar, axis=1)
-        elif type == 'median':
+        elif ptype == 'median':
             prof = np.nanmedian(polar, axis=1)
-        elif type == 'min':
+        elif ptype == 'min':
             prof = np.nanmin(polar, axis=1)
-        elif type == 'max':
+        elif ptype == 'max':
             prof = np.nanmax(polar, axis=1)
         else:
-            raise ValueError('Unknown statistics ptype = {0}. Allowed values are mean, std, var, median, min and max'.format(type))
+            raise ValueError('Unknown statistics ptype = {0}. Allowed values are mean, std, var, median, min and max'.format(ptype))
     else:
         # slower if we need step > 1
         prof = np.zeros(i_max, dtype=img.dtype)
@@ -1203,20 +1215,20 @@ def profile(img, type='mean', step=1, mask=None, center=None, rmax=0, clip=True,
             idx = ((rad[r]-step/2) <= rad) & (rad <= (rad[r]+step/2))
             val = polar[idx, :]
             
-            if type == 'mean':
+            if ptype == 'mean':
                 prof[r] = np.nanmean(val)
-            elif type == 'std':
+            elif ptype == 'std':
                 prof[r] = np.nanstd(val)
-            elif type == 'var':
+            elif ptype == 'var':
                 prof[r] = np.nanvar(val)
-            elif type == 'median':
+            elif ptype == 'median':
                 prof[r] = np.nanmedian(val)
-            elif type == 'min':
+            elif ptype == 'min':
                 prof[r] = np.nanmin(val)
-            elif type == 'max':
+            elif ptype == 'max':
                 prof[r] = np.nanmax(val)
             else:
-                raise ValueError('Unknown statistics ptype = {0}. Allowed values are mean, std, var, median, min and max'.format(type))
+                raise ValueError('Unknown statistics ptype = {0}. Allowed values are mean, std, var, median, min and max'.format(ptype))
 
     return prof, rad
 
@@ -1244,6 +1256,8 @@ def median(img, dim):
     img_filt : array
         Median filtered image
     '''
+
+    dim = np.round(dim).astype(np.int64)
     img_filt = img - ndimage.filters.median_filter(img, size=(dim, dim))
     
     return img_filt
