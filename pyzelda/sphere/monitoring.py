@@ -139,6 +139,14 @@ def import_data(path, check_pupil_files=True):
         info_files.loc[file, 'DIT']    = hdr['HIERARCH ESO DET SEQ1 DIT']
         info_files.loc[file, 'NDIT']   = hdr['HIERARCH ESO DET NDIT']
 
+        info_files.loc[file, 'temp_enclosure']    = hdr.get('HIERARCH ESO INS4 TEMP421 VAL', np.nan)
+        info_files.loc[file, 'temp_hodm']         = hdr.get('HIERARCH ESO INS4 TEMP422 VAL', np.nan)
+        info_files.loc[file, 'temp_wfs']          = hdr.get('HIERARCH ESO INS4 TEMP423 VAL', np.nan)
+        info_files.loc[file, 'temp_ittm']         = hdr.get('HIERARCH ESO INS4 TEMP424 VAL', np.nan)
+        info_files.loc[file, 'temp_near_ifs']     = hdr.get('HIERARCH ESO INS4 TEMP425 VAL', np.nan)
+        info_files.loc[file, 'temp_zimpol_bench'] = hdr.get('HIERARCH ESO INS4 TEMP416 VAL', np.nan)
+        info_files.loc[file, 'humidity_hodm']     = hdr.get('HIERARCH ESO INS4 SENS428 VAL', np.nan)
+        
     # file types
     info_files.loc[np.logical_not(info_files.source), 'type'] = 'B'
     info_files.loc[info_files.source & (info_files.coro == 'ZELDA'), 'type'] = 'Z'
@@ -172,10 +180,10 @@ def import_data(path, check_pupil_files=True):
                                header=[0], parse_dates=False)
     else:
         cols = ['dark_file', 'clear_pupil_file', 'zelda_pupil_file', 'opd_map_file',
-                 'full_std', 'no_ttf_std']
+                 'full_std', 'no_tt_std']
         for t in ['full_zern']:
             cols.extend(['{0}.{1}'.format(t, z) for z in range(nzernike)])
-        for t in ['full_psd', 'no_ttf_psd']:
+        for t in ['full_psd', 'no_tt_psd']:
             cols.extend(['{0}.{1}'.format(t, z) for z in range(1, 100)])
 
         all_dates = [date for date in dates for i in range(ncpa_n_iter)]
@@ -188,6 +196,8 @@ def import_data(path, check_pupil_files=True):
 
     # read and analyse data
     for date in dates:
+        print(date)
+
         # get file names
         dark_file = info_files[(info_files.date == date) & (info_files.type == 'B')].index[0]
         clear_pupil_file  = info_files[(info_files.date == date) & (info_files.type == 'R')].index[0]
@@ -299,14 +309,9 @@ def import_data(path, check_pupil_files=True):
 
         for z in range(nzernike):
             opd_info.loc[index, 'full_zern.{0}'.format(z)] = zcoeff[z]
-        
-        # remove tip, tilt and focus
-        opd_full = opd.copy()
-        opd -= zcoeff[1] * basis[1]
-        opd -= zcoeff[2] * basis[2]
-        opd -= zcoeff[3] * basis[3]
-        
+                
         # compute PSD
+        opd_full = opd.copy()
         opd_info.loc[index, 'full_std'] = opd_full[pupil].std()
         psd_2d, psd_1d, freq = ztools.compute_psd(opd_full, mask=pupil, freq_cutoff=freq_cutoff)
         for f in range(1, freq_cutoff):
@@ -314,12 +319,17 @@ def import_data(path, check_pupil_files=True):
             sigma = np.sqrt(psd_2d[disc].sum())
             opd_info.loc[index, 'full_psd.{0}'.format(f)] = sigma
         
-        opd_info.loc[index, 'no_ttf_std'] = opd[pupil].std()
+        # remove tip and tilt
+        opd -= zcoeff[1] * basis[1]
+        opd -= zcoeff[2] * basis[2]
+        # opd -= zcoeff[3] * basis[3]
+        
+        opd_info.loc[index, 'no_tt_std'] = opd[pupil].std()
         psd_2d, psd_1d, freq = ztools.compute_psd(opd, mask=pupil, freq_cutoff=freq_cutoff)
         for f in range(1, freq_cutoff):
             disc = psd_an[f]
             sigma = np.sqrt(psd_2d[disc].sum())
-            opd_info.loc[index, 'no_ttf_psd.{0}'.format(f)] = sigma
+            opd_info.loc[index, 'no_tt_psd.{0}'.format(f)] = sigma
 
     # save opd info
     opd_info.to_csv(opd_files_db)
@@ -334,7 +344,7 @@ def _plot_iterations(opd_info, series, color):
     for date in all_dates:
         data = opd_info.loc[(date, slice(None)), series]
         time = data.index.get_level_values(0) + np.timedelta64(5, 'h') * np.arange(5)
-        plt.plot_date(time, data, xdate=True, linestyle='-', marker='', color=color,
+        plt.plot_date(time, data, xdate=True, linestyle='-', color=color,
                       alpha=0.6, label='')
 
 
@@ -383,14 +393,14 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
         MF = ( 4,  19)
         HF = (20,  99)
 
-        freqs = opd_info.loc[:, slice('no_ttf_psd.{0}'.format(LF[0]), 'no_ttf_psd.{0}'.format(LF[1]))].values
-        opd_info['no_ttf_LF'] = np.sqrt(np.sum(freqs**2, axis=1))
+        freqs = opd_info.loc[:, slice('no_tt_psd.{0}'.format(LF[0]), 'no_tt_psd.{0}'.format(LF[1]))].values
+        opd_info['no_tt_LF'] = np.sqrt(np.sum(freqs**2, axis=1))
 
-        freqs = opd_info.loc[:, slice('no_ttf_psd.{0}'.format(MF[0]), 'no_ttf_psd.{0}'.format(MF[1]))].values
-        opd_info['no_ttf_MF'] = np.sqrt(np.sum(freqs**2, axis=1))
+        freqs = opd_info.loc[:, slice('no_tt_psd.{0}'.format(MF[0]), 'no_tt_psd.{0}'.format(MF[1]))].values
+        opd_info['no_tt_MF'] = np.sqrt(np.sum(freqs**2, axis=1))
 
-        freqs = opd_info.loc[:, slice('no_ttf_psd.{0}'.format(HF[0]), 'no_ttf_psd.{0}'.format(HF[1]))].values
-        opd_info['no_ttf_HF'] = np.sqrt(np.sum(freqs**2, axis=1))
+        freqs = opd_info.loc[:, slice('no_tt_psd.{0}'.format(HF[0]), 'no_tt_psd.{0}'.format(HF[1]))].values
+        opd_info['no_tt_HF'] = np.sqrt(np.sum(freqs**2, axis=1))
 
         # plot
         plt.figure(0, figsize=(25, 11))
@@ -400,37 +410,37 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle=':', marker='o', color=color[0],
                       label='Total')
-        # _plot_iterations(opd_info, series, color[0])
+        _plot_iterations(opd_info, series, color[0])
         
-        series = 'no_ttf_std'
+        series = 'no_tt_std'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[1],
-                      label='No tip/tilt/focus')
+                      label='No tip/tilt')
         _plot_iterations(opd_info, series, color[1])
 
-        series = 'no_ttf_LF'
-        data = opd_info.loc[(slice(None), 0), series]
-        plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[2],
-                      label=r'Low freq. ({0}-{1} c/p)'.format(LF[0], LF[1]+1))
-        _plot_iterations(opd_info, series, color[2])
+        # series = 'no_tt_LF'
+        # data = opd_info.loc[(slice(None), 0), series]
+        # plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[2],
+        #               label=r'Low freq. ({0}-{1} c/p)'.format(LF[0], LF[1]+1))
+        # _plot_iterations(opd_info, series, color[2])
 
-        series = 'no_ttf_MF'
-        data = opd_info.loc[(slice(None), 0), series]
-        plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[3],
-                      label=r'Mid freq. ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
-        _plot_iterations(opd_info, series, color[3])
+        # series = 'no_tt_MF'
+        # data = opd_info.loc[(slice(None), 0), series]
+        # plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[3],
+        #               label=r'Mid freq. ({0}-{1} c/p)'.format(MF[0], MF[1]+1))
+        # _plot_iterations(opd_info, series, color[3])
 
-        series = 'no_ttf_HF'
-        data = opd_info.loc[(slice(None), 0), series]
-        plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
-                      label=r'High freq. ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
-        _plot_iterations(opd_info, series, color[4])
+        # series = 'no_tt_HF'
+        # data = opd_info.loc[(slice(None), 0), series]
+        # plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[4],
+        #               label=r'High freq. ({0}-{1} c/p)'.format(HF[0], HF[1]+1))
+        # _plot_iterations(opd_info, series, color[4])
 
-        # specs (without beam-shift)
-        plt.axhline(np.sqrt(7.9**2 + 11.6**2 + 32.6**2), color=color[1], linestyle='--', linewidth=2)
-        plt.axhline( 7.9, color=color[2], linestyle='--', linewidth=2)
-        plt.axhline(11.6, color=color[3], linestyle='--', linewidth=2)
-        plt.axhline(32.6, color=color[4], linestyle='--', linewidth=2)
+        # # specs (without beam-shift)
+        # plt.axhline(np.sqrt(7.9**2 + 11.6**2 + 32.6**2), color=color[1], linestyle='--', linewidth=2)
+        # plt.axhline( 7.9, color=color[2], linestyle='--', linewidth=2)
+        # plt.axhline(11.6, color=color[3], linestyle='--', linewidth=2)
+        # plt.axhline(32.6, color=color[4], linestyle='--', linewidth=2)
 
         last  = all_dates.max() + np.timedelta64(1, 'D')
         # last  = datetime.date(2018, 1, 31)
@@ -473,7 +483,7 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
         plt.subplot(121)
 
         for f in range(5):
-            data = opd_info.loc[(date, f), slice('no_ttf_psd.1', 'no_ttf_psd.99')].squeeze()
+            data = opd_info.loc[(date, f), slice('no_tt_psd.1', 'no_tt_psd.99')].squeeze()
             plt.plot(np.arange(1, 100), data, linestyle='-', marker='', color=color[f],
                      label='Iteration {0}'.format(f))
 

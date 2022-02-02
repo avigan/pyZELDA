@@ -240,14 +240,24 @@ def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
     center = np.array(center)
     cint = center.astype(np.int)
     cc = dim // 2
-
-    # extract useful data
     ext = 10
-    data_cube = cube[:,
-                origin[1] + cint[1] - cc - ext:origin[1] + cint[1] + cc + ext,
-                origin[0] + cint[0] - cc - ext:origin[0] + cint[0] + cc + ext]
+    
+    xmin = origin[0] + cint[0] - cc - ext
+    xmax = origin[0] + cint[0] + cc + ext
+
+    ymin = origin[1] + cint[1] - cc - ext
+    ymax = origin[1] + cint[1] + cc + ext
+    
+    # extract useful data
+    data_cube = cube[:, ymin:ymax, xmin:xmax]
 
     del cube
+
+    if data_cube.shape[-1] % 2:
+        data_cube = data_cube[:, :, :-1]
+
+    if data_cube.shape[-2] % 2:
+        data_cube = data_cube[:, :-1, :]
 
     # collapse if needed
     if collapse:
