@@ -5,7 +5,7 @@ Images utility library
 @author: avigan
 '''
 
-import collections
+import collections.abc
 import numpy as np
 import scipy.fftpack as fft
 import scipy.ndimage as ndimage
@@ -147,7 +147,7 @@ def shift(array, shift_value, method='fft', mode='constant', cval=0):
         raise ValueError('This function can shift only 1D or 2D arrays')
 
     # check that shift value is fine
-    if isinstance(shift_value, collections.Iterable):
+    if isinstance(shift_value, collections.abc.Iterable):
         shift_value = np.array(shift_value).ravel()
         if (shift_value.size != Ndim):
             raise ValueError('Number of dimensions in array and shift don\'t match')
@@ -722,7 +722,7 @@ def scale(array, scale_value, center=None, new_dim=None, method='fft', mode='con
                           'The center of rotation is exactly at ((dimx-1)/2, dimy/2).')
     
     # check that scale value is fine
-    if isinstance(scale_value, collections.Iterable):
+    if isinstance(scale_value, collections.abc.Iterable):
         scale_value = np.array(scale_value).ravel()
         if (scale_value.size != Ndim):
             raise ValueError('Number of dimensions in array and scale value don\'t match')
@@ -845,7 +845,7 @@ def sigma_filter(img, box=5, nsigma=3, iterate=False, return_mask=False, max_ite
     imvar = fact*(convolve(imdev, kernel)*box2 - imdev)
 
     # following solution is faster but does not support bad pixels
-    # see avigan/VLTPF#49
+    # see avigan/SPHERE#49
     # img_clip = (ndimage.uniform_filter(img, box, mode='constant')*box2 - img) / (box2-1)
 
     # imdev = (img - img_clip)**2
@@ -1256,8 +1256,6 @@ def median(img, dim):
     img_filt : array
         Median filtered image
     '''
-
-    dim = np.round(dim).astype(np.int64)
     img_filt = img - ndimage.filters.median_filter(img, size=(dim, dim))
     
     return img_filt
