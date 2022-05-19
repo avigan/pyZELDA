@@ -63,6 +63,32 @@ def parallatic_angle(ha, dec, geolat):
     return np.degrees(pa)
 
 
+def altitude(ha, dec, geolat):
+    '''
+    Altitude of a source in degrees
+
+    Parameters
+    ----------
+    ha : array_like
+        Hour angle, in hours
+
+    dec : float
+        Declination, in degrees
+
+    geolat : float
+        Observatory declination, in degrees
+
+    Returns
+    -------
+    alt : array_like
+        Telescope altitude values
+    '''
+
+    alt = np.arcsin(np.sin(dec) * np.sin(geolat) + np.cos(dec) * np.cos(ha) * np.cos(geolat))
+
+    return np.degrees(alt)
+
+
 def sort_files(root):
     '''Sort the raw files of a ZELDA sequence
 
@@ -131,6 +157,7 @@ def sort_files(root):
     #
     # ZELDA frames information
     #
+    print('ZELDA frames')
     nframes = int(info_files.loc[info_files.type == 'Z', 'NDIT'].sum())
     columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
                'time', 'time_start', 'time_end',
@@ -183,6 +210,10 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
@@ -194,7 +225,7 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
         info_frames.loc[idx0:idx1, 'coro']       = row.coro
         info_frames.loc[idx0:idx1, 'filt']       = row.filt
-        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'DIT']        = np.full(int(NDIT), DIT)
         info_frames.loc[idx0:idx1, 'time_start'] = time_beg
         info_frames.loc[idx0:idx1, 'time']       = time_mid
         info_frames.loc[idx0:idx1, 'time_end']   = time_end
@@ -202,7 +233,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
-        info_frames.loc[idx0:idx1, 'drot']         = drot
+        info_frames.loc[idx0:idx1, 'alt']        = alt
+        info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -212,6 +246,7 @@ def sort_files(root):
     #
     # CLEAR frames information
     #
+    print('CLEAR frames')
     nframes = int(info_files.loc[info_files.type == 'R', 'NDIT'].sum())
     columns = ('file', 'img', 'nd_cal', 'nd_cpi', 'coro', 'filt', 'DIT',
                'drot', 'time', 'time_start', 'time_end')
@@ -263,18 +298,22 @@ def sort_files(root):
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
+        alt  = altitude(ha, dec, geolat)
+
+        pupil_rot = -alt.value
+        field_rot = pa.value - alt.value
 
         # create data frame
         idx0 = index
         idx1 = index+NDIT-1
-
+        
         info_frames.loc[idx0:idx1, 'file']       = row.file
         info_frames.loc[idx0:idx1, 'img']        = np.arange(0, NDIT, dtype=int)
         info_frames.loc[idx0:idx1, 'nd_cal']     = row.nd_cal
         info_frames.loc[idx0:idx1, 'nd_cpi']     = row.nd_cpi
         info_frames.loc[idx0:idx1, 'coro']       = row.coro
         info_frames.loc[idx0:idx1, 'filt']       = row.filt
-        info_frames.loc[idx0:idx1, 'DIT']        = DIT
+        info_frames.loc[idx0:idx1, 'DIT']        = np.full(int(NDIT), DIT)
         info_frames.loc[idx0:idx1, 'time_start'] = time_beg
         info_frames.loc[idx0:idx1, 'time']       = time_mid
         info_frames.loc[idx0:idx1, 'time_end']   = time_end
@@ -282,7 +321,10 @@ def sort_files(root):
         info_frames.loc[idx0:idx1, 'lst']        = lst.hour
         info_frames.loc[idx0:idx1, 'ha']         = ha.hour
         info_frames.loc[idx0:idx1, 'pa']         = pa
-        info_frames.loc[idx0:idx1, 'drot']         = drot
+        info_frames.loc[idx0:idx1, 'alt']        = alt
+        info_frames.loc[idx0:idx1, 'drot']       = drot
+        info_frames.loc[idx0:idx1, 'pupil_rot']  = pupil_rot
+        info_frames.loc[idx0:idx1, 'field_rot']  = field_rot
 
         index += NDIT
 
@@ -312,27 +354,36 @@ def read_info(root):
     '''
 
     # read files info
-    path = os.path.join(root, 'products', 'info_files.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_files.csv does not exist in {0}'.format(root))    
-    info_files = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_files.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_files.csv does not exist in {0}'.format(root))    
+        info_files = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_files = None
         
     # read files info
-    path = os.path.join(root, 'products', 'info_frames.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_frames.csv does not exist in {0}'.format(root))
-    info_frames = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_frames.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_frames.csv does not exist in {0}'.format(root))
+        info_frames = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_frames = None
 
     # reference frames info
-    path = os.path.join(root, 'products', 'info_frames_ref.csv')
-    if not os.path.exists(path):
-        raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
-    info_frames_ref = pd.read_csv(path, index_col=0)
+    try:
+        path = os.path.join(root, 'products', 'info_frames_ref.csv')
+        if not os.path.exists(path):
+            raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
+        info_frames_ref = pd.read_csv(path, index_col=0)
+    except ValueError:
+        info_frames_ref = None
     
     return info_files, info_frames, info_frames_ref
     
 
-def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
+def process(root, sequence_type='temporal', correction_factor=1, unit='m', center_offset=(0, 0)):
     '''Process a complete sequence of ZELDA data
 
     The processing centers the data and performs the ZELDA analysis to
@@ -354,6 +405,10 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
 
     unit : str
         Unit for the processed cube. Can me either m, um or nm. Default is m
+
+    center_offset : tuple
+        Offset (dx, dy) to be applied on the center automatically determined by
+        pyZELDA for the pupil. Default is (0, 0)
     '''
 
     # read info
@@ -372,11 +427,11 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
 
     # apply unit and correction factor
     if unit == 'm':
-        pass
+        correction_factor *= 1e-9
     elif unit == 'um':
-        correction_factor *= 1e6
+        correction_factor *= 1e-3
     elif unit == 'nm':
-        correction_factor *= 1e9
+        pass
     else:
         raise ValueError(f'Unknown output unit {unit}')
     
@@ -391,6 +446,9 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                                                              zelda_pupil_files[f], dark_files,
                                                              collapse_clear=True, collapse_zelda=False)
 
+            # apply offset on center
+            center = center[0] + center_offset[0], center[1] + center_offset[1]
+            
             # analyse
             opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
 
@@ -406,17 +464,20 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                                                          zelda_pupil_files[0], dark_files,
                                                          collapse_clear=True, collapse_zelda=True)
 
+        # apply offset on center
+        center = center[0] - center_offset[0], center[1] - center_offset[1]
+        
         # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
         for idx, row in info_frames.iterrows():
-            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).idxmin(), :]
-
+            ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).abs().idxmin(), :]
+            
             info_frames.loc[idx, 'file_ref'] = ref.file
             info_frames.loc[idx, 'img_ref']  = ref.img
 
         sci = None
         for f in range(len(zelda_pupil_files)):
             print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
-
+            
             # read ZELDA pupils
             if sci != zelda_pupil_files[f]:
                 sci = zelda_pupil_files[f]
@@ -439,13 +500,13 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m'):
                     ref = file_ref
 
                     print('  ==> reading CLEAR pupils {}'.format(ref))
-                    clear_pupil, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
-                                                      zelda_pupil_files[f], dark_files,
-                                                      collapse_clear=False, collapse_zelda=False,
-                                                      center=center)
+                    clear_pupils, zp, c = z.read_files(os.path.join(root, 'raw/'), file_ref,
+                                                       zelda_pupil_files[f], dark_files,
+                                                       collapse_clear=False, collapse_zelda=False,
+                                                       center=center)
             
                 # analyse
-                opd_cube[img] = z.analyze(clear_pupil[img_ref], zelda_pupils[img], wave=1.642e-6)
+                opd_cube[img] = z.analyze(clear_pupils[img_ref], zelda_pupils[img], wave=1.642e-6)
                 
             # correction factor and unit
             opd_cube *= correction_factor
@@ -1335,16 +1396,16 @@ def matrix_process(root, matrix, ncpu=1):
     return vec_mean, vec_std
 
 
-def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
-                                 nzern=80, filter_cutoff=40, pupil_mask=None,
-                                 turbulence_residuals=False,
-                                 psd_compute=True, psd_cutoff=40,
-                                 ncpa_sliding_mean=10, save_intermediate=False,
-                                 save_product=False, save_ncpa=True, test_mode=True):
-    '''Implements the subtraction of the internal turbulence in a long
+def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
+                            nzern=80, filter_cutoff=40, pupil_mask=None,
+                            turbulence_residuals=False,
+                            psd_compute=True, psd_cutoff=40,
+                            ncpa_sliding_mean=10, save_intermediate=False,
+                            save_product=False, save_ncpa=True, test_mode=True):
+    '''Implements the fitting and subtraction of the internal turbulence in a long
     OPD sequence
 
-    The subtract_turbulence() method estimates the contribution of the
+    The fit_internal_turbulence() method estimates the contribution of the
     internal turbulence in a sequence, subtracts it to the data and
     calculates the final quasi-static NCPA variations. The procedure
     is the following:
@@ -1422,8 +1483,10 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
     log.info('Start turbulence subtraction')
     
     if method.lower() == 'zernike':
+        log.info(f' > method={method}, smean={turb_sliding_mean:03d}, nzern={nzern:03d}')
         suffix = 'method={:s}_smean={:03d}_nzern={:03d}'.format(method, turb_sliding_mean, nzern)
     elif method.lower() == 'fft':
+        log.info(f' > method={method}, smean={turb_sliding_mean:03d}, fcutoff={filter_cutoff:03d}')
         suffix = 'method={:s}_smean={:03d}_fcutoff={:.1f}'.format(method, turb_sliding_mean, filter_cutoff)
     else:
         raise ValueError('Unknown subtraction method {0}'.format(method))
@@ -1597,6 +1660,156 @@ def subtract_internal_turbulence(root=None, turb_sliding_mean=30, method='zernik
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
         rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
         fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+    
+    print()
+    log.info('Finished!')
+    print('Finished!')
+    print()
+
+    
+def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
+                                           pupil_mask=None, psd_compute=True, psd_cutoff=40,
+                                           ncpa_sliding_mean=10, save_intermediate=False,
+                                           save_product=False, save_ncpa=True, test_mode=True):
+    '''Implements a simpler estimation and subtraction of the internal turbulence in a long
+    OPD sequence
+
+    
+    Parameters
+    ----------
+    root : str
+        Path to the working directory
+    
+    turb_sliding_mean : int
+        Number of images over which the OPD maps will be averaged to
+        compute the sliding mean. Should be even. Default is 30
+        
+    pupil_mask : array
+        Mask defining the pupil.
+
+    psd_compute : bool
+        Perform all PSD computations. Can be disabled to save time.
+        Default is True.
+
+    psd_cutoff : float    
+        Spatial frequency cutoff for the calculation of the turbulence
+        residuals PSD. Default is 40
+
+    ncpa_sliding_mean : int
+        Number of images over which the OPD maps will be averaged to
+        compute the sliding mean used for the final NCPA estimation.
+        Should be even. Default is 10
+        
+    save_product : bool
+        Save the OPD after turbulence subtraction. Default is False
+
+    save_ncpa : bool
+        Save final quasi-static NCPA cube after turbulence subtraction.
+        Default is False.
+
+    test_mode : bool
+        If True, limits the number of frames in the data to 100. Default is True
+    '''
+
+    log.info('Start turbulence subtraction')
+    log.info(f' > method=simple, smean={turb_sliding_mean:03d}')
+
+    suffix = f'method=simple_smean={turb_sliding_mean:03d}'
+
+    # root
+    if root is None:
+        raise ValueError('root must contain the path to the data!')
+        
+    # read data
+    log.info('Read data')
+    data = fits.getdata(root / 'products' / 'opd_cube.fits')
+    if test_mode:
+        data = data[0:100]
+
+    # pupil mask
+    if pupil_mask is None:
+        pupil_mask = (data[0] != 0)
+    else:
+        # hide values outside of the pupil
+        log.info('Hide values outside of the pupil')
+        for i in range(len(data)):
+            data[i] = data[i]*pupil_mask
+    
+    # sliding mean over avg_time sec ==> provides a simple estimation of the data without turbulence
+    log.info('Compute sliding mean')
+    data_no_turb = sliding_mean(root, data, nimg=turb_sliding_mean)
+
+    # subtract sliding mean to isolate turbulence
+    log.info('Subtract sliding mean')
+    turb = data - data_no_turb
+
+    # free memory
+    del data
+        
+    if save_product:
+        fits.writeto(root / 'products' / f'sequence_turbulence_{suffix}.fits', turb, overwrite=True)
+    
+    # compute PSD of turbulence
+    if psd_compute:
+        log.info('Compute PSD of turbulence')    
+        psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of turbulence
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        fits.writeto(root / 'products' / f'sequence_turbulence_{suffix:s}_psd.fits', rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+
+    # free memory
+    del turb
+        
+    # save data without turbulence
+    if save_product:
+        fits.writeto(root / 'products' / f'sequence_data_cube_no_turbulence_{suffix:s}.fits', data_no_turb, overwrite=True)
+
+    # compute PSD of the final sequence
+    if psd_compute:
+        log.info('Compute PSD of data without turbulence')
+        psd_cube = compute_psd(root, data_no_turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / f'sequence_data_cube_no_turbulence_{suffix:s}_psd.fits', rec, overwrite=True)
+
+        # free memory
+        del psd_cube
+
+    # NCPA estimation
+    log.info('Compute final NCPA')
+    ncpa_cube = subtract_mean_opd(root, data_no_turb, nimg=ncpa_sliding_mean)
+
+    if save_ncpa:
+        fits.writeto(root / 'products' / f'sequence_ncpa_cube_{suffix:s}.fits', ncpa_cube, overwrite=True)
+    
+    # compute PSD of the final sequence
+    if psd_compute:
+        log.info('Compute PSD of final NCPA')
+        psd_cube = compute_psd(root, ncpa_cube, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
+
+        # integrate PSD of residuals
+        psd_int, psd_bnds = integrate_psd(root, psd_cube, freq_cutoff=psd_cutoff)
+
+        # save as FITS table
+        dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
+        fits.writeto(root / 'products' / f'sequence_ncpa_cube_{suffix:s}_psd.fits', rec, overwrite=True)
 
         # free memory
         del psd_cube

@@ -1,6 +1,9 @@
 pyZELDA
 =======
 
+<img src="https://img.shields.io/badge/Python->3.5-yellow.svg?style=flat"> [<img src="https://img.shields.io/pypi/v/pyzelda?color=brightgreen">](https://pypi.org/project/pyzelda/) [<img src="https://img.shields.io/github/v/release/avigan/pyZELDA?color=red">](https://github.com/avigan/pyZELDA/releases/latest/) [<img src="https://img.shields.io/github/release-date/avigan/pyZELDA">](https://github.com/avigan/pyZELDA/releases/latest/) [<img src="https://img.shields.io/github/license/avigan/pyZELDA?color=blue">](https://github.com/avigan/pyZELDA/blob/master/LICENSE) [<img src="https://img.shields.io/badge/ascl-1806.003-blue.svg?colorB=262255" alt="ascl:1806.003" />](https://ascl.net/1806.003) [<img src="https://img.shields.io/badge/ADS%20reference-Vigan%20(2018)-blueviolet">](https://ui.adsabs.harvard.edu/abs/2018ascl.soft06003V/abstract) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6564082.svg)](https://doi.org/10.5281/zenodo.6564082)
+
+
 Introduction
 ------------
 
