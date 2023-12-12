@@ -861,7 +861,7 @@ def sigma_filter(img, box=5, nsigma=3, iterate=False, return_mask=False, max_ite
 
     # create _mask at first iteration
     if _mask is None:
-        _mask = np.zeros_like(img, dtype=np.bool)
+        _mask = np.zeros_like(img, dtype=bool)
 
     # identify clipped pixels
     _mask[img != img_clip] = True
