@@ -169,7 +169,7 @@ def recentred_data_files(path, data_files, dark, dim, center, collapse, origin, 
         with the scaling to apply along the x and y
     '''
     center = np.array(center)
-    cint = center.astype(np.int)
+    cint = center.astype(int)
     cc = dim // 2
 
     # read zelda pupil data (all frames)
@@ -238,7 +238,7 @@ def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
         with the scaling to apply along the x and y
     '''
     center = np.array(center)
-    cint = center.astype(np.int)
+    cint = center.astype(int)
     cc = dim // 2
     ext = 10
     
@@ -790,7 +790,7 @@ def compute_fft_opd(opd, mask=None, freq_cutoff=None):
         pad_opd = np.pad(opd, pad_width, 'constant')
         fft_opd = norm * fft.fftshift(fft.fft2(fft.fftshift(pad_opd), norm='ortho'))
     else:
-        fft_opd = norm * mft.mft(opd, Dpup, np.int(2*freq_cutoff*sampling), 2*freq_cutoff)
+        fft_opd = norm * mft.mft(opd, Dpup, int(2*freq_cutoff*sampling), 2*freq_cutoff)
 
     return fft_opd
 
