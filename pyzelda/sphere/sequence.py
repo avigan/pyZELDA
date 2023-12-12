@@ -1334,7 +1334,7 @@ def matrix_tpool_process(diag):
     matrix = array_to_numpy(matrix_data, matrix_shape, np.float)
     nimg   = matrix.shape[-1]
 
-    mask = np.eye(nimg, k=-diag, dtype=np.bool)
+    mask = np.eye(nimg, k=-diag, dtype=bool)
     mean = matrix[mask].mean()
     std  = matrix[mask].std()
 

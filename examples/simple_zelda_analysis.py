@@ -39,7 +39,10 @@ if opd_map.ndim == 3:
     opd_map = opd_map.mean(axis=0)
 
 # decomposition on Zernike polynomials
-basis, coeff, opd_zern = ztools.zernike_expand(opd_map, 20)
+basis, coeff, opd_zern = ztools.zernike_expand(opd_map, 100)
+
+opd_map_reconstructed = opd_zern.mean(axis=0)
+opd_map_reconstructed[opd_map == 0] = np.nan
 
 #%% plot
 fig = plt.figure(0, figsize=(16, 4))
@@ -66,3 +69,48 @@ cbar.set_label('OPD [nm]')
 
 plt.tight_layout()
 plt.show()
+
+#%%
+import matplotlib.gridspec as gridspec
+import matplotlib.ticker as ticker
+
+ext = 100
+
+fig = plt.figure('Intensity', figsize=(10, 8))
+fig.clf()
+gs = gridspec.GridSpec(1, 2, width_ratios=[1, 0.06], bottom=0.05, top=0.95, left=0.02, right=0.88, wspace=0.1)
+ax = fig.add_subplot(gs[0])
+cim = ax.imshow(zelda_pupil.mean(axis=0), aspect='equal', vmin=0, vmax=2000, cmap='viridis')
+ax.xaxis.set_ticklabels([])
+ax.xaxis.set_major_locator(ticker.NullLocator())
+ax.yaxis.set_ticklabels([])
+ax.yaxis.set_major_locator(ticker.NullLocator())
+ax = fig.add_subplot(gs[1])
+cbar = fig.colorbar(cim, cax=ax, orientation='vertical', label='Intensity [ADU]')
+fig.savefig(path / 'zelda_intensity.pdf')
+
+fig = plt.figure('OPD', figsize=(10, 8))
+fig.clf()
+gs = gridspec.GridSpec(1, 2, width_ratios=[1, 0.06], bottom=0.05, top=0.95, left=0.02, right=0.88, wspace=0.1)
+ax = fig.add_subplot(gs[0])
+cim = ax.imshow(opd_map, aspect='equal', vmin=-ext, vmax=ext, cmap='bwr')
+ax.xaxis.set_ticklabels([])
+ax.xaxis.set_major_locator(ticker.NullLocator())
+ax.yaxis.set_ticklabels([])
+ax.yaxis.set_major_locator(ticker.NullLocator())
+ax = fig.add_subplot(gs[1])
+cbar = fig.colorbar(cim, cax=ax, orientation='vertical', label='Optical path difference [nm]')
+fig.savefig(path / 'zelda_opd.pdf')
+
+fig = plt.figure('OPD reconstructed', figsize=(10, 8))
+fig.clf()
+gs = gridspec.GridSpec(1, 2, width_ratios=[1, 0.06], bottom=0.05, top=0.95, left=0.02, right=0.88, wspace=0.1)
+ax = fig.add_subplot(gs[0])
+cim = ax.imshow(opd_map_reconstructed, aspect='equal', vmin=-ext, vmax=ext, cmap='bwr')
+ax.xaxis.set_ticklabels([])
+ax.xaxis.set_major_locator(ticker.NullLocator())
+ax.yaxis.set_ticklabels([])
+ax.yaxis.set_major_locator(ticker.NullLocator())
+ax = fig.add_subplot(gs[1])
+cbar = fig.colorbar(cim, cax=ax, orientation='vertical', label='Optical path difference [nm]')
+fig.savefig(path / 'zelda_opd_reconstructed.pdf')

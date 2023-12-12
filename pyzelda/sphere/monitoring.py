@@ -271,7 +271,7 @@ def import_data(path, check_pupil_files=True):
     # generate discs for PSD integration
     psd_2d, psd_1d, freq = ztools.compute_psd(np.zeros((dim, dim)), mask=pupil, freq_cutoff=freq_cutoff)
     dim_psd = psd_2d.shape[0]
-    psd_an = np.zeros((freq_cutoff+1, dim_psd, dim_psd), dtype=np.bool)
+    psd_an = np.zeros((freq_cutoff+1, dim_psd, dim_psd), dtype=bool)
     for f in range(1, freq_cutoff):
         freq_min = f
         freq_max = f+1
