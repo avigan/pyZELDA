@@ -569,7 +569,7 @@ def _scale_fft(array, scale_value, alt_criterion=False):
     # We minimize this difference between the `ideal' N" and its closest integer value      
     # Compared to the ALTernate criterion below, this one favors small
     # values of N" i.e. little truncation in Fourier space.  
-    kd_array = np.arange(dim/2 + 1, dtype=np.int)
+    kd_array = np.arange(dim/2 + 1, dtype=int)
     yy = dim/2 * (zoom_io - 1) + kd_array.astype(np.float)*zoom_io
     kf_array = np.round(yy).astype(np.int)
 
