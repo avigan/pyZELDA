@@ -76,7 +76,7 @@ def str_zernike(n, m):
     terms = []
     for k in range(int((n - m) / 2) + 1):
         coef = ((-1) ** k * factorial(n - k) /
-                (factorial(k) * factorial((n + m) / 2. - k) * factorial((n - m) / 2. - k)))
+                (factorial(k) * factorial(int((n + m) / 2) - k) * factorial(int((n - m) / 2) - k)))
         if coef != 0:
             formatcode = "{0:d}" if k == 0 else "{0:+d}"
             terms.append((formatcode + " r^{1:d} ").format(int(coef), n - 2 * k))
@@ -163,7 +163,7 @@ def R(n, m, rho):
     else:
         for k in range(int((n - m) / 2) + 1):
             coef = ((-1) ** k * factorial(n - k) /
-                    (factorial(k) * factorial((n + m) / 2. - k) * factorial((n - m) / 2. - k)))
+                    (factorial(k) * factorial(int((n + m) / 2) - k) * factorial(int((n - m) / 2) - k)))
             output += coef * rho ** (n - 2 * k)
         return output
 
@@ -455,7 +455,7 @@ def hexike_basis(nterms=15, npix=512, rho=None, theta=None,
 
     basis = np.asarray(H[1:])   # drop the 0th null element
     basis[:, aperture < 1] = outside
-    
+
     return basis
 
 
@@ -617,8 +617,8 @@ def arbitrary_basis(aperture, nterms=15, rho=None, theta=None, outside=np.nan):
 
     if theta is None and rho is None:
         # To avoid clipping the aperture, we precompute the zernike modes
-        # on an array oversized s.t. the zernike disk circumscribes the 
-        # entire aperture. We then slice the zernike array down to the 
+        # on an array oversized s.t. the zernike disk circumscribes the
+        # entire aperture. We then slice the zernike array down to the
         # requested array size and cut the aperture out of it.
 
         # get max extent of aperture from array center
