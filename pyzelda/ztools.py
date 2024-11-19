@@ -241,13 +241,13 @@ def recentred_data_cubes(cube, dim, center, collapse, origin, anamorphism):
     cint = center.astype(int)
     cc = dim // 2
     ext = 10
-    
+
     xmin = origin[0] + cint[0] - cc - ext
     xmax = origin[0] + cint[0] + cc + ext
 
     ymin = origin[1] + cint[1] - cc - ext
     ymax = origin[1] + cint[1] + cc + ext
-    
+
     # extract useful data
     data_cube = cube[:, ymin:ymax, xmin:xmax]
 
@@ -355,7 +355,7 @@ def refractive_index(wave, substrate, T=293):
 
 
 def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate, mask_Fratio,
-                                       pupil_diameter, pupil, wave, clear=np.array([]), 
+                                       pupil_diameter, pupil, wave, clear=np.array([]),
                                        sign_mask=np.array([]), cpix=False):
     '''
     Simulate the ZELDA reference wave
@@ -378,7 +378,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
         Instrument pupil
     wave : float, optional
         Wavelength of the data, in m
-    
+
 
     clear : array
         Clear intensity map, optional. If provided, used to estimate the input field amplitude
@@ -389,7 +389,7 @@ def create_reference_wave_beyond_pupil(mask_diameter, mask_depth, mask_substrate
         If not provided, will be considered 1 everywhere.
     cpix : bool, default is False
         if True, it centers the apertures / FFTs on a single pixel, otherwise between 4 pixels
-        
+
     Returns
     -------
     reference_wave : array_like

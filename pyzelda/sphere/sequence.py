@@ -27,7 +27,7 @@ import ctypes
 
 from astropy.io import fits
 from astropy.time import Time, TimeDelta
-from scipy.stats import pearsonr 
+from scipy.stats import pearsonr
 
 import pyzelda.ztools as ztools
 import pyzelda.utils.aperture as aperture
@@ -59,7 +59,7 @@ def parallatic_angle(ha, dec, geolat):
 
     if (dec >= geolat):
         pa[ha < 0] += 360*units.degree
-    
+
     return np.degrees(pa)
 
 
@@ -109,7 +109,7 @@ def sort_files(root):
         Data frame with information on all frames of all files
 
     '''
-    
+
     # find files
     files = sorted(glob.glob(os.path.join(root, 'raw', '*.fits')))
 
@@ -189,7 +189,7 @@ def sort_files(root):
         geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
         geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
         geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
-        
+
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
         end_time   = Time(hdr['DATE'], location=(geolon, geolat, geoelev))
@@ -206,7 +206,7 @@ def sort_files(root):
         end_drot   = row.drot_end
         delta      = (end_drot - start_drot)/NDIT
         drot = start_drot + delta * np.arange(NDIT)
-        
+
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
@@ -242,7 +242,7 @@ def sort_files(root):
 
     # save
     info_frames.to_csv(os.path.join(root, 'products', 'info_frames.csv'))
-    
+
     #
     # CLEAR frames information
     #
@@ -277,7 +277,7 @@ def sort_files(root):
         geolon = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLON', -70.4045), units.degree)
         geolat = coord.Angle(hdr.get('HIERARCH ESO TEL GEOLAT', -24.6268), units.degree)
         geoelev = hdr.get('HIERARCH ESO TEL GEOELEV', 2648.0)
-        
+
         # timestamps
         start_time = Time(hdr['DATE-OBS'], location=(geolon, geolat, geoelev))
         end_time   = Time(hdr['DATE'], location=(geolon, geolat, geoelev))
@@ -294,7 +294,7 @@ def sort_files(root):
         end_drot   = row.drot_end
         delta      = (end_drot - start_drot)/NDIT
         drot = start_drot + delta * np.arange(NDIT)
-        
+
         lst  = time_mid.sidereal_time('apparent')
         ha   = lst - ra
         pa   = parallatic_angle(ha, dec, geolat)
@@ -306,7 +306,7 @@ def sort_files(root):
         # create data frame
         idx0 = index
         idx1 = index+NDIT-1
-        
+
         info_frames.loc[idx0:idx1, 'file']       = row.file
         info_frames.loc[idx0:idx1, 'img']        = np.arange(0, NDIT, dtype=int)
         info_frames.loc[idx0:idx1, 'nd_cal']     = row.nd_cal
@@ -342,7 +342,7 @@ def read_info(root):
 
     Returns
     -------
-    info_files : DataFrame    
+    info_files : DataFrame
         Data frame with information on all files.
 
     info_frames : DataFrame
@@ -350,18 +350,18 @@ def read_info(root):
 
     info_frames_ref : DataFrame (optional)
         Data frame with information on reference frames of all files.
-     
+
     '''
 
     # read files info
     try:
         path = os.path.join(root, 'products', 'info_files.csv')
         if not os.path.exists(path):
-            raise ValueError('info_files.csv does not exist in {0}'.format(root))    
+            raise ValueError('info_files.csv does not exist in {0}'.format(root))
         info_files = pd.read_csv(path, index_col=0)
     except ValueError:
         info_files = None
-        
+
     # read files info
     try:
         path = os.path.join(root, 'products', 'info_frames.csv')
@@ -375,13 +375,13 @@ def read_info(root):
     try:
         path = os.path.join(root, 'products', 'info_frames_ref.csv')
         if not os.path.exists(path):
-            raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))    
+            raise ValueError('info_frames_ref.csv does not exist in {0}'.format(root))
         info_frames_ref = pd.read_csv(path, index_col=0)
     except ValueError:
         info_frames_ref = None
-    
+
     return info_files, info_frames, info_frames_ref
-    
+
 
 def process(root, sequence_type='temporal', correction_factor=1, unit='m', center_offset=(0, 0)):
     '''Process a complete sequence of ZELDA data
@@ -400,7 +400,7 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
         depending on the type of the sequence. Default is temporal
 
     correction_factor : float
-        Amplitude correction factor for the OPD maps. 
+        Amplitude correction factor for the OPD maps.
         Default is 1 (no correction)
 
     unit : str
@@ -413,7 +413,7 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
 
     # read info
     info_files, info_frames, info_frames_ref = read_info(root)
-    
+
     # list of files
     clear_pupil_files = info_files.loc[info_files['type'] == 'R', 'file'].values.tolist()
     zelda_pupil_files = info_files.loc[info_files['type'] == 'Z', 'file'].values.tolist()
@@ -434,7 +434,7 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
         pass
     else:
         raise ValueError(f'Unknown output unit {unit}')
-    
+
     # read and analyse
     print('ZELDA analysis')
     if sequence_type == 'temporal':
@@ -448,7 +448,7 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
 
             # apply offset on center
             center = center[0] + center_offset[0], center[1] + center_offset[1]
-            
+
             # analyse
             opd_cube = z.analyze(clear_pupil, zelda_pupils, wave=1.642e-6)
 
@@ -466,18 +466,18 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
 
         # apply offset on center
         center = center[0] - center_offset[0], center[1] - center_offset[1]
-        
+
         # find closest match in derotator orientation (in fact hour angle) for each ZELDA pupil image
         for idx, row in info_frames.iterrows():
             ref = info_frames_ref.loc[(info_frames_ref.ha-row.ha).abs().idxmin(), :]
-            
+
             info_frames.loc[idx, 'file_ref'] = ref.file
             info_frames.loc[idx, 'img_ref']  = ref.img
 
         sci = None
         for f in range(len(zelda_pupil_files)):
             print(' * {0} ({1}/{2})'.format(zelda_pupil_files[f], f+1, len(zelda_pupil_files)))
-            
+
             # read ZELDA pupils
             if sci != zelda_pupil_files[f]:
                 sci = zelda_pupil_files[f]
@@ -495,7 +495,7 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
                 file_ref = row.file_ref
                 img_ref  = int(row.img_ref)
                 img      = int(row.img)
-                
+
                 if ref != file_ref:
                     ref = file_ref
 
@@ -504,10 +504,10 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
                                                        zelda_pupil_files[f], dark_files,
                                                        collapse_clear=False, collapse_zelda=False,
                                                        center=center)
-            
+
                 # analyse
                 opd_cube[img] = z.analyze(clear_pupils[img_ref], zelda_pupils[img], wave=1.642e-6)
-                
+
             # correction factor and unit
             opd_cube *= correction_factor
 
@@ -519,13 +519,13 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
         raise ValueError('Unknown sequence type {}'.format(sequence_type))
     print()
 
-    # merge all cubes    
+    # merge all cubes
     print('Merging cubes')
     zelda_files = info_files[info_files['type'] == 'Z']
     nframe = int(zelda_files['NDIT'].sum())
 
     data = fits.getdata(os.path.join(root, 'processed', zelda_pupil_files[0]+'_opd.fits'))
-    dim  = data.shape[-1]    
+    dim  = data.shape[-1]
     opd_cube = np.empty((nframe, dim, dim))
     idx = 0
     for f in range(len(zelda_pupil_files)):
@@ -536,15 +536,15 @@ def process(root, sequence_type='temporal', correction_factor=1, unit='m', cente
             ndit = 1
         else:
             ndit = data.shape[0]
-        
+
         opd_cube[idx:idx+ndit] = data
 
         idx += ndit
         del data
-        
+
     # save
     fits.writeto(os.path.join(root, 'products', 'opd_cube.fits'), opd_cube, overwrite=True)
-    
+
 
 def plot(root, nimg=0):
     '''Plot individual OPD maps of a full sequence
@@ -555,19 +555,19 @@ def plot(root, nimg=0):
     e.g.:
 
     ffmpeg -f image2 -r 10 -i opd_map_%04d.png -preset medium -crf 10 -pix_fmt yuv420p -y opd_sequence.mp4
-    
+
     Parameters
     ----------
     root : str
         Path to the working directory
 
-    nimg : int    
+    nimg : int
         Maximum number of images to plot. Default is 0 for all images
 
     '''
 
     print('Plot full sequence')
-    
+
     # read info
     info_files, info_frames = read_info(root)
 
@@ -598,18 +598,18 @@ def plot(root, nimg=0):
     path = os.path.join(root, 'products', 'images')
     if not os.path.exists(path):
         os.mkdir(path)
-    
+
     # loop on images
     ext = 10
     for i in range(ndit):
         if (np.mod(i, 100) == 0):
             print(' * image {0} / {1}'.format(i, ndit))
-        
+
         cdata = data[i]
 
         fig = plt.figure(0, figsize=(12, 5), dpi=100)
         plt.clf()
-    
+
         ax = fig.add_subplot(121)
         cax = ax.imshow(cdata, cmap=cmap0, norm=norm0, interpolation='none', origin=1)
         ax.set_xticks([])
@@ -623,7 +623,7 @@ def plot(root, nimg=0):
         # timestamp
         cts = (ts[i]-ts[0]).astype(np.float)/1e9/60
         ax.text(0, 0, 't = {0:>6.2f} min'.format(cts), horizontalalignment='left', size=14, transform=ax.transAxes)
-    
+
         ax = fig.add_subplot(122)
         cax = ax.imshow(cdata-mean, cmap=cmap1, norm=norm1, interpolation='none', origin=1)
         ax.set_xticks([])
@@ -637,18 +637,18 @@ def plot(root, nimg=0):
         plt.tight_layout()
 
         plt.subplots_adjust(wspace=0.1, left=0.02, right=0.99, bottom=0.02, top=0.98)
-    
+
         plt.savefig(os.path.join(path, 'opd_map_{0:04d}.png'.format(i)))
 
     # delete data
     del data
-    
+
 
 def stat(root, data, pupil_mask=None, suffix=''):
     '''Compute statistics on a sequence of OPD maps
 
     Save the statistics in a CSV file
-    
+
     Parameters
     ----------
     root : str
@@ -657,22 +657,22 @@ def stat(root, data, pupil_mask=None, suffix=''):
     data : str
         OPD maps cube
 
-    pupil_mask : array    
+    pupil_mask : array
         Binary mask to hide parts of the pupil in the OPD
         maps. Default is None
 
     suffix : str
         Suffix for file names
-    
+
     '''
 
     print('Compute statistics')
 
-    nimg = data.shape[0]    
+    nimg = data.shape[0]
 
     # read info
     info_files, info_frames = read_info(root)
-    
+
     # pupil mask
     if pupil_mask is None:
         mask = (data[0] != 0)
@@ -683,7 +683,7 @@ def stat(root, data, pupil_mask=None, suffix=''):
     for i in range(nimg):
         if (i % 100) == 0:
             print(' * image {0}/{1}'.format(i, len(data)))
-            
+
         img = data[i]
         img = img[mask]
 
@@ -706,7 +706,7 @@ def subtract_mean_opd(root, data, nimg=0, filename=None):
 
     The function returns the data cube after subtraction of the mean OPD
     and optionally saves it on disk.
-    
+
     Parameters
     ----------
     root : str
@@ -726,33 +726,33 @@ def subtract_mean_opd(root, data, nimg=0, filename=None):
     data : array
         Data cube after subtraction of the mean OPD
     '''
-    
+
     print('Subtract mean OPD over {0} images'.format(nimg))
-    
+
     if nimg == 0:
         static_opd = data.mean(axis=0)
     else:
         static_opd = np.mean(data[0:nimg], axis=0)
-        
+
     for i, img in enumerate(data):
         if (i % 100) == 0:
             print(' * image {0}/{1}'.format(i, len(data)))
-        
+
         img -= static_opd
 
     # save
     if filename is not None:
         fits.writeto(os.path.join(root, 'products', filename+'.fits'), data, overwrite=True)
-    
+
     return data
 
-    
+
 def sliding_mean(root, data, nimg=10, filename=None):
     '''Compute the sliding mean of a sequence over nimg
 
     The function returns the sliding mean cube and optionally saves it
     on disk.
-    
+
     Parameters
     ----------
     root : str
@@ -761,7 +761,7 @@ def sliding_mean(root, data, nimg=10, filename=None):
     data : str
         OPD maps cube
 
-    nimg : int    
+    nimg : int
         Number of images over which to calculate the sliding
         mean. This number should be oven. Default value is 10
 
@@ -773,27 +773,27 @@ def sliding_mean(root, data, nimg=10, filename=None):
     data : array
         Sliding mean OPD cube
     '''
-    
+
     print('Compute sliding mean over {0} images'.format(nimg))
-    
+
     nopd = data.shape[0]
     Dpup = data.shape[-1]
-    
+
     sliding_opd = np.empty((nopd, Dpup, Dpup))
     for i in range(nopd):
         if (i % 100) == 0:
             print(' * image {0}/{1}'.format(i, nopd))
-        
+
         i_min = i - nimg//2
         i_max = i + nimg//2
 
         # edge cases
         if (i_min < 0):
             i_min = 0
-            
+
         if (i_max >= nopd):
             i_max = nopd
-            
+
         sliding_opd[i] = np.mean(data[i_min:i_max], axis=0)
 
     # save
@@ -819,7 +819,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
     they can be easily integrated between bounds. The normalization
     takes into account the geometry of the pupil defined by
     pupil_mask.
-    
+
     Parameters
     ----------
     root : str
@@ -853,12 +853,12 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
     '''
 
     print('Compute PSDs')
-    
-    nimg     = data.shape[0]    
+
+    nimg     = data.shape[0]
     Dpup     = data.shape[-1]
     sampling = 2**(np.ceil(np.log(2*Dpup)/np.log(2))) / Dpup
     dim_psd  = int(2*freq_cutoff*sampling)
-    
+
     psd_cube = np.empty((nimg, dim_psd, dim_psd))
     if return_fft:
         fft_cube = np.empty((nimg, dim_psd, dim_psd), dtype=np.complex)
@@ -875,9 +875,9 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
             opd[idx] -= opd[idx].mean()
 
         # compute PSD
-        fft_opd = ztools.compute_fft_opd(opd, mask=pupil_mask, freq_cutoff=freq_cutoff)        
+        fft_opd = ztools.compute_fft_opd(opd, mask=pupil_mask, freq_cutoff=freq_cutoff)
         psd_cube[i] = np.abs(fft_opd)**2
-        
+
         if return_fft:
             fft_cube[i].real = fft_opd.real
             fft_cube[i].imag = fft_opd.imag
@@ -885,7 +885,7 @@ def compute_psd(root, data, freq_cutoff=40, return_fft=False, pupil_mask=None, f
     # save
     if filename is not None:
         fits.writeto(os.path.join(root, 'products', filename+'_psd.fits'), psd_cube, overwrite=True)
-        
+
         if return_fft:
             fits.writeto(os.path.join(root, 'products', filename+'_fft.fits'), fft_cube, overwrite=True)
 
@@ -909,10 +909,10 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None, silent=True):
 
     psd : str
         PSD cube
-    
+
     freq_cutoff : float
         Cutoff frequency of the PSD in cycle/pupil. Default is 40
-    
+
     filename : str
         Base name of the files to save result. The _int and _bnd
         suffixes will be added to the base name for the integrated
@@ -928,24 +928,24 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None, silent=True):
     '''
 
     print('Integrate PSDs')
-    
+
     nimg = psd.shape[0]
     dim  = psd.shape[-1]
-    
+
     nbounds = freq_cutoff
     freq_bounds = np.zeros((nbounds, 2))
     psd_sigma = np.zeros((nbounds, nimg))
     for f in range(freq_cutoff):
         freq_min = f
         freq_max = f+1
-        
-        if not silent: 
+
+        if not silent:
             print(' * bounds: {0} ==> {1}'.format(freq_min, freq_max))
 
         freq_bounds[f, 0] = freq_min
         freq_bounds[f, 1] = freq_max
-        
-        freq_min_pix = freq_min*dim/(2*freq_cutoff) 
+
+        freq_min_pix = freq_min*dim/(2*freq_cutoff)
         freq_max_pix = freq_max*dim/(2*freq_cutoff)
 
         if freq_min == 0:
@@ -953,7 +953,7 @@ def integrate_psd(root, psd, freq_cutoff=40, filename=None, silent=True):
         else:
             disc = aperture.disc(dim, freq_max_pix, diameter=False) \
                     - aperture.disc(dim, freq_min_pix, diameter=False)
-        
+
         for i in range(nimg):
             psd_2d = psd[i]
             psd_sigma[f, i] = np.sqrt(psd_2d[disc == 1].sum())
@@ -986,7 +986,7 @@ def psd_temporal_statistics(psd_sigma, bounds, CI=[0.99, 0.95, 0.68]):
     psd_sigma_med : array
         Median of the integrated PSD sequence between each bounds
 
-    psd_sigma_lim : array    
+    psd_sigma_lim : array
         Limits of the integrated PSD sequence in the provide
         confidence intervals
     '''
@@ -998,7 +998,7 @@ def psd_temporal_statistics(psd_sigma, bounds, CI=[0.99, 0.95, 0.68]):
     nci = len(CI)
     nval = len(psd_sigma[0])
     nbounds = len(bounds)
-    
+
     psd_sigma_med = np.zeros(nbounds)
     psd_sigma_lim = np.zeros((nci, 2, nbounds))
     for b in range(nbounds):
@@ -1024,10 +1024,10 @@ def zernike_projection(root, data, nzernike=32, reconstruct=False, pupil_mask=No
     The function returns the basis and the value of the projection
     coefficients for all OPD maps in the sequence. If reconstruct is
     True, the function also returns the reconstructed OPD maps.
-    
+
     The projection takes into account the geometry of the pupil
     defined by pupil_mask.
-    
+
     Parameters
     ----------
     root : str
@@ -1039,11 +1039,11 @@ def zernike_projection(root, data, nzernike=32, reconstruct=False, pupil_mask=No
     nzernike : int
         Number of Zernike modes to use for the projection
 
-    reconstruct : bool    
+    reconstruct : bool
         Reconstruct the OPD from the Zernike coefficients and save the
         resulting cube
-    
-    pupil_mask : array    
+
+    pupil_mask : array
         Binary mask to hide parts of the pupil in the OPD
         maps. Default is None
 
@@ -1064,7 +1064,7 @@ def zernike_projection(root, data, nzernike=32, reconstruct=False, pupil_mask=No
         Reconstructed sequence of OPD maps
 
     '''
-    
+
     nimg = data.shape[0]
     Dpup = data.shape[-1]
 
@@ -1073,31 +1073,31 @@ def zernike_projection(root, data, nzernike=32, reconstruct=False, pupil_mask=No
         mask = (data[0] != 0)
     else:
         mask = (pupil_mask != 0)
-    
+
     # get Zernike basis
     rho, theta = aperture.coordinates(data.shape[-1], Dpup/2, cpix=True, strict=False, outside=0)
     basis = zernike.arbitrary_basis(mask, nterms=nzernike, rho=rho, theta=theta)
-    basis = np.nan_to_num(basis)    
+    basis = np.nan_to_num(basis)
 
     print('Project on Zernike basis')
-    
+
     nbasis = np.reshape(basis, (nzernike, -1))
     data   = np.reshape(data, (nimg, -1))
     mask   = mask.flatten()
     data[:, mask == 0] = 0
     zcoeff = (nbasis @ data.T) / mask.sum()
-    
+
     # save
-    if filename is not None:    
+    if filename is not None:
         fits.writeto(os.path.join(root, 'products', filename+'_bas.fits'), basis, overwrite=True)
         fits.writeto(os.path.join(root, 'products', filename+'_val.fits'), zcoeff, overwrite=True)
 
     # reconstruct the projected OPD maps
     if reconstruct:
         print('Reconstruct synthetic OPD maps')
-        
+
         synthetic_opd = (zcoeff.T @ nbasis).reshape(nimg, Dpup, Dpup)
-        
+
         # save
         if filename is not None:
             fits.writeto(os.path.join(root, 'products', filename+'_syn.fits'), synthetic_opd, overwrite=True)
@@ -1106,13 +1106,13 @@ def zernike_projection(root, data, nzernike=32, reconstruct=False, pupil_mask=No
         return basis, zcoeff, synthetic_opd
     else:
         return basis, zcoeff
-    
-    
+
+
 def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename=None):
     '''High-pass or low-pass filtering of a sequence of OPD maps
 
     Filtering is done in the Fourier space using a Hann window.
-    
+
     Parameters
     ----------
     root : str
@@ -1123,15 +1123,15 @@ def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename
 
     freq_cutoff : float
         Cutoff frequency of the PSD in cycle/pupil. Default is 40
-    
-    lowpass : bool    
+
+    lowpass : bool
         Apply a low-pass filter or a high-pass filter. Default is
         True, i.e. apply a low-pass filter.
 
     window : bool
         Filtering window type. Possible valeus are Hann and rect.
         Default is Hann
-    
+
     filename : str
         Name of the file to save result
 
@@ -1143,7 +1143,7 @@ def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename
 
     nimg = data.shape[0]
     Dpup = data.shape[-1]
-    
+
     # filtering window
     M = freq_cutoff
     xx, yy = np.meshgrid(np.arange(2*M)-M, np.arange(2*M)-M)
@@ -1157,7 +1157,7 @@ def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename
 
     # pupil values
     mask = (data[0] != 0)
-    
+
     # highpass or lowpass filter
     bandpass = 'low'
     if not lowpass:
@@ -1165,19 +1165,19 @@ def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename
         window = 1-window
 
     print('Apply {0}-pass filter'.format(bandpass))
-        
+
     # filter images
     data_filtered = np.empty((nimg, Dpup, Dpup))
     for i in range(nimg):
         if (i % 100) == 0:
             print(' * opd map {0}/{1}'.format(i, nimg))
-        
+
         opd = data[i]
         opd_fft = fft.fftshift(fft.fft2(fft.fftshift(opd)))
         opd_filtered = fft.fftshift(fft.ifft2(fft.fftshift(opd_fft*window)))
         opd_filtered = opd_filtered.real
         opd_filtered *= mask
-        
+
         data_filtered[i] = opd_filtered
 
     # save
@@ -1185,8 +1185,8 @@ def fft_filter(root, data, freq_cutoff=40, lowpass=True, window='hann', filename
         fits.writeto(os.path.join(root, 'products', filename+'.fits'), data_filtered, overwrite=True)
 
     return data_filtered
-    
-    
+
+
 def matrix_correlation_pearson(root, data, pupil_mask=None, filename=None):
     '''Computes opd-to-opd correlation using Pearson coefficient
 
@@ -1198,7 +1198,7 @@ def matrix_correlation_pearson(root, data, pupil_mask=None, filename=None):
     data : str
         OPD maps cube
 
-    pupil_mask : array    
+    pupil_mask : array
         Binary mask to hide parts of the pupil in the OPD
         maps. Default is None
 
@@ -1214,34 +1214,34 @@ def matrix_correlation_pearson(root, data, pupil_mask=None, filename=None):
     '''
 
     print('Compute OPD-to-OPD Pearson correlation coefficient')
-    
-    nimg = data.shape[0]    
+
+    nimg = data.shape[0]
 
     # pupil mask
     if pupil_mask is None:
         mask = (data[0] != 0)
     else:
         mask = (pupil_mask != 0)
-    
+
     # compute correlation matrix
     t0 = time.time()
-    
+
     matrix_prs = np.full((nimg, nimg), np.nan)
     for i in range(nimg):
         # time calculation
         t = time.time()
         delta_t = (t - t0)/((i+1)**2/2)/60
         time_left = (nimg**2/2 - (i+1)**2/2)*delta_t
-        
+
         print(' * i={0}, time left={1:.2f} min'.format(i, time_left))
         for j in range(i+1):
             img0 = data[i][mask]
             img1 = data[j][mask]
 
             coeff, p = pearsonr(img0, img1)
-            
+
             matrix_prs[i, j] = coeff
-    
+
     #save
     if filename is not None:
         fits.writeto(os.path.join(root, 'products', filename+'_prs.fits'), matrix_prs, overwrite=True)
@@ -1260,7 +1260,7 @@ def matrix_difference(root, data, pupil_mask=None, filename=None):
     data : str
         OPD maps cube
 
-    pupil_mask : array    
+    pupil_mask : array
         Binary mask to hide parts of the pupil in the OPD
         maps. Default is None
 
@@ -1275,20 +1275,20 @@ def matrix_difference(root, data, pupil_mask=None, filename=None):
         PtV and standard deviation correlation matrices
 
     '''
-    
+
     print('Compute statistics on OPD-to-OPD differences')
-    
-    nimg = data.shape[0]    
+
+    nimg = data.shape[0]
 
     # pupil mask
     if pupil_mask is None:
         mask = (data[0] != 0)
     else:
         mask = (pupil_mask != 0)
-    
+
     # compute matrices
     t0 = time.time()
-    
+
     matrix_diff_ptv = np.full((nimg, nimg), np.nan)
     matrix_diff_std = np.full((nimg, nimg), np.nan)
     for i in range(nimg):
@@ -1296,15 +1296,15 @@ def matrix_difference(root, data, pupil_mask=None, filename=None):
         t = time.time()
         delta_t = (t - t0)/((i+1)**2/2)/60
         time_left = (nimg**2/2 - (i+1)**2/2)*delta_t
-        
+
         print(' * i={0}, time left={1:.2f} min'.format(i, time_left))
         for j in range(i+1):
             img = data[i] - data[j]
             img = img[mask]
-            
+
             matrix_diff_ptv[i, j] = img.max() - img.min()
             matrix_diff_std[i, j] = img.std()
-    
+
     #save
     if filename is not None:
         fits.writeto(os.path.join(root, 'products', filename+'_ptv.fits'), matrix_diff_ptv, overwrite=True)
@@ -1368,7 +1368,7 @@ def matrix_process(root, matrix, ncpu=1):
     '''
 
     print('Process matrix')
-    
+
     nimg = matrix.shape[-1]
 
     matrix_data  = mp.RawArray(ctypes.c_double, matrix.size)
@@ -1376,7 +1376,7 @@ def matrix_process(root, matrix, ncpu=1):
     matrix_np    = array_to_numpy(matrix_data, matrix_shape, np.float)
     matrix_np[:] = matrix
 
-    pool = mp.Pool(processes=ncpu, initializer=matrix_tpool_init, 
+    pool = mp.Pool(processes=ncpu, initializer=matrix_tpool_init,
                    initargs=(matrix_data, matrix_shape))
     tasks = []
     for i in range(nimg):
@@ -1420,19 +1420,19 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
          (turbulence - reconstructed_turbulence) and compute their PSD
       6. Subtract reconstructed turbulence to the original OPD sequence
       7. Compute the PSD of the final sequence without turbulence
-      8. Subtract a sliding mean of ncpa_sliding_mean images to the 
+      8. Subtract a sliding mean of ncpa_sliding_mean images to the
          final sequence to measure the quasi-static NCPA
       9. Compute the PSD of the quasi-static NCPA
-    
+
     Parameters
     ----------
     root : str
         Path to the working directory
-    
+
     turb_sliding_mean : int
         Number of images over which the OPD maps will be averaged to
         compute the sliding mean. Should be even. Default is 30
-        
+
     method : str
         Method that will be used to estimate and subtract the turbulence.
         Possible values are zernike or fft. Default is zernike
@@ -1440,23 +1440,23 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
     nzern: int
         Number of Zernike modes to use for the projection of the
         turbulence. Defaut is 80.
-    
+
     filter_cutoff : float
-        Spatial frequency used for the high-pass FFT filter when 
+        Spatial frequency used for the high-pass FFT filter when
         method='fft'. Default is 40.
 
     pupil_mask : array
         Mask defining the pupil.
 
-    turbulence_residuals : bool 
-        Compute the turbulence residuals and related statistics. 
+    turbulence_residuals : bool
+        Compute the turbulence residuals and related statistics.
         Default is False
-    
+
     psd_compute : bool
         Perform all PSD computations. Can be disabled to save time.
         Default is True.
 
-    psd_cutoff : float    
+    psd_cutoff : float
         Spatial frequency cutoff for the calculation of the turbulence
         residuals PSD. Default is 40
 
@@ -1464,8 +1464,8 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
         Number of images over which the OPD maps will be averaged to
         compute the sliding mean used for the final NCPA estimation.
         Should be even. Default is 10
-        
-    
+
+
     save_intermediate : bool
         Save all intermediate data products. Default is False
 
@@ -1481,7 +1481,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
     '''
 
     log.info('Start turbulence subtraction')
-    
+
     if method.lower() == 'zernike':
         log.info(f' > method={method}, smean={turb_sliding_mean:03d}, nzern={nzern:03d}')
         suffix = 'method={:s}_smean={:03d}_nzern={:03d}'.format(method, turb_sliding_mean, nzern)
@@ -1494,7 +1494,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
     # root
     if root is None:
         raise ValueError('root must contain the path to the data!')
-        
+
     # read data
     log.info('Read data')
     data = fits.getdata(root / 'products' / 'opd_cube.fits')
@@ -1509,24 +1509,24 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
         log.info('Hide values outside of the pupil')
         for i in range(len(data)):
             data[i] = data[i]*pupil_mask
-    
+
     # sliding mean over avg_time sec
     log.info('Compute sliding mean')
     data_sliding_mean = sliding_mean(root, data, nimg=turb_sliding_mean)
-    
+
     # subtract sliding mean to isolate turbulence
     log.info('Subtract sliding mean')
     turb = data - data_sliding_mean
-    
+
     # free memory
     del data_sliding_mean
 
     if save_intermediate:
         fits.writeto(root / 'products' / 'sequence_turbulence_{:s}.fits'.format(suffix), turb, overwrite=True)
-    
+
     # compute PSD of turbulence
     if psd_compute:
-        log.info('Compute PSD of turbulence')    
+        log.info('Compute PSD of turbulence')
         psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
         # integrate PSD of turbulence
@@ -1534,12 +1534,12 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
         # save as FITS table
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
-        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
         fits.writeto(root / 'products' / 'sequence_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
-    
+
     # fit turbulence with Zernikes
     if method.lower() == 'zernike':
         log.info('Fit turbulence with Zernike')
@@ -1565,7 +1565,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
     if save_intermediate:
         fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}.fits'.format(suffix), turb_reconstructed, overwrite=True)
-    
+
     # compute PSD of reconstructed turbulence
     if psd_compute:
         log.info('Compute PSD of reconstructed turbulence')
@@ -1576,12 +1576,12 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
         # save as FITS table
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
-        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
         fits.writeto(root / 'products' / 'sequence_reconstructed_turbulence_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
         # free memory
         del psd_cube
-      
+
     # compute turbulence residuals
     if turbulence_residuals:
         # subtract reconstructued turbulence
@@ -1590,13 +1590,13 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
         if save_intermediate:
             fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}.fits'.format(suffix), turb_residuals, overwrite=True)
-        
+
         # compute PSD of residuals
         if psd_compute:
             log.info('Compute PSD of turbulence residuals')
             psd_cube = compute_psd(root, turb_residuals, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
-            # free memory 
+            # free memory
             del turb_residuals
 
             # integrate PSD of residuals
@@ -1604,12 +1604,12 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
             # save as FITS table
             dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
-            rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+            rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
             fits.writeto(root / 'products' / 'sequence_turbulence_residuals_{:s}_psd.fits'.format(suffix), rec, overwrite=True)
 
             # free memory
             del psd_cube
-    
+
     # free memory
     del turb
 
@@ -1624,7 +1624,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
     # free memory
     del data
     del turb_reconstructed
-    
+
     # compute PSD of the final sequence
     if psd_compute:
         log.info('Compute PSD of data without turbulence')
@@ -1647,7 +1647,7 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
     if save_ncpa:
         fits.writeto(root / 'products' / 'sequence_ncpa_cube_{:s}.fits'.format(suffix), ncpa_cube, overwrite=True)
-    
+
     # compute PSD of the final sequence
     if psd_compute:
         log.info('Compute PSD of final NCPA')
@@ -1663,13 +1663,13 @@ def fit_internal_turbulence(root=None, turb_sliding_mean=30, method='zernike',
 
         # free memory
         del psd_cube
-    
+
     print()
     log.info('Finished!')
     print('Finished!')
     print()
 
-    
+
 def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
                                            pupil_mask=None, psd_compute=True, psd_cutoff=40,
                                            ncpa_sliding_mean=10, save_intermediate=False,
@@ -1677,16 +1677,16 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     '''Implements a simpler estimation and subtraction of the internal turbulence in a long
     OPD sequence
 
-    
+
     Parameters
     ----------
     root : str
         Path to the working directory
-    
+
     turb_sliding_mean : int
         Number of images over which the OPD maps will be averaged to
         compute the sliding mean. Should be even. Default is 30
-        
+
     pupil_mask : array
         Mask defining the pupil.
 
@@ -1694,7 +1694,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         Perform all PSD computations. Can be disabled to save time.
         Default is True.
 
-    psd_cutoff : float    
+    psd_cutoff : float
         Spatial frequency cutoff for the calculation of the turbulence
         residuals PSD. Default is 40
 
@@ -1702,7 +1702,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         Number of images over which the OPD maps will be averaged to
         compute the sliding mean used for the final NCPA estimation.
         Should be even. Default is 10
-        
+
     save_product : bool
         Save the OPD after turbulence subtraction. Default is False
 
@@ -1722,7 +1722,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
     # root
     if root is None:
         raise ValueError('root must contain the path to the data!')
-        
+
     # read data
     log.info('Read data')
     data = fits.getdata(root / 'products' / 'opd_cube.fits')
@@ -1737,7 +1737,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
         log.info('Hide values outside of the pupil')
         for i in range(len(data)):
             data[i] = data[i]*pupil_mask
-    
+
     # sliding mean over avg_time sec ==> provides a simple estimation of the data without turbulence
     log.info('Compute sliding mean')
     data_no_turb = sliding_mean(root, data, nimg=turb_sliding_mean)
@@ -1748,13 +1748,13 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
 
     # free memory
     del data
-        
+
     if save_product:
         fits.writeto(root / 'products' / f'sequence_turbulence_{suffix}.fits', turb, overwrite=True)
-    
+
     # compute PSD of turbulence
     if psd_compute:
-        log.info('Compute PSD of turbulence')    
+        log.info('Compute PSD of turbulence')
         psd_cube = compute_psd(root, turb, freq_cutoff=psd_cutoff, pupil_mask=pupil_mask, return_fft=False)
 
         # integrate PSD of turbulence
@@ -1762,7 +1762,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
 
         # save as FITS table
         dtype = np.dtype([('BOUNDS', 'f4', psd_bnds.shape), ('PSD', 'f4', psd_int.shape)])
-        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])        
+        rec = np.array([np.rec.array((psd_bnds, psd_int), dtype=dtype)])
         fits.writeto(root / 'products' / f'sequence_turbulence_{suffix:s}_psd.fits', rec, overwrite=True)
 
         # free memory
@@ -1770,7 +1770,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
 
     # free memory
     del turb
-        
+
     # save data without turbulence
     if save_product:
         fits.writeto(root / 'products' / f'sequence_data_cube_no_turbulence_{suffix:s}.fits', data_no_turb, overwrite=True)
@@ -1797,7 +1797,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
 
     if save_ncpa:
         fits.writeto(root / 'products' / f'sequence_ncpa_cube_{suffix:s}.fits', ncpa_cube, overwrite=True)
-    
+
     # compute PSD of the final sequence
     if psd_compute:
         log.info('Compute PSD of final NCPA')
@@ -1813,7 +1813,7 @@ def simple_internal_turbulence_subtraction(root=None, turb_sliding_mean=30,
 
         # free memory
         del psd_cube
-    
+
     print()
     log.info('Finished!')
     print('Finished!')
