@@ -581,14 +581,14 @@ class Sensor():
 
                 P[pupil_roi == 0] = 0
 
-                delta = (expi.imag) ** 2 - 2 / P * (reference_wave - P) * (1 - expi.real) ** 2 - \
-                        (clear - zelda_norm) * (1 - expi.real) / (P * reference_wave)
+                delta = np.zeros(P.shape, dtype=complex)
+                inzero = np.where(P != 0)
+                delta[inzero] = (expi.imag) ** 2 - 2 / P[inzero] * (reference_wave[inzero] - P[inzero]) * (1 - expi.real) ** 2 - (clear[inzero] - zelda_norm[inzero]) * (1 - expi.real) / (P[inzero] * reference_wave[inzero])
+                delta[P == 0] = 0
 
                 delta = (delta.real).squeeze()
-                delta = np.nan_to_num(delta)
+                # delta = np.nan_to_num(delta)
                 delta[pupil_roi == 0] = 0
-
-
             else:
                 zelda_norm = zelda_pupil[idx] / clear
 
@@ -598,8 +598,11 @@ class Sensor():
                 # determinant calculation #
                 ###########################
 
-                delta = (expi.imag) ** 2 - 2 * (reference_wave - 1) * (1 - expi.real) ** 2 - \
-                        ((1 - zelda_norm) / reference_wave) * (1 - expi.real)
+                delta = np.zeros(reference_wave.shape, dtype=complex)
+                inzero = np.where(reference_wave != 0)
+                delta[inzero] = (expi.imag) ** 2 - 2 * (reference_wave[inzero] - 1) * (1 - expi.real) ** 2 - ((1 - zelda_norm[inzero]) / reference_wave[inzero]) * (1 - expi.real)
+                delta[reference_wave == 0] = 0
+
                 delta = delta.real
                 delta[~pup] = 0
 
