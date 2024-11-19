@@ -39,7 +39,7 @@ freq_cutoff = 100
 def import_data(path, check_pupil_files=True):
     '''
     Import new ZELDA monitoring data
-   
+
     The data should be organised using a very simple architecture. If
     the root analysis directory is path/, then the raw data should be
     in path/raw/ and the results of the analysis will be stored in
@@ -67,7 +67,7 @@ def import_data(path, check_pupil_files=True):
 
     if not path_prod.exists():
         path_prod.mkdir(exist_ok=True)
-    
+
     #
     # read and sort raw data
     #
@@ -75,7 +75,7 @@ def import_data(path, check_pupil_files=True):
 
     # list all FITS files
     all_files = [file.stem for file in path.glob('raw/*.fits')]
-    
+
     if check_pupil_files:
         # select only the ones acquired in pupil imaging
         files = []
@@ -88,7 +88,7 @@ def import_data(path, check_pupil_files=True):
     else:
         # here we assume that raw files are already sorted
         files = all_files
-    
+
     # open or/create database
     files = set(files)
     if raw_files_db.exists():
@@ -107,15 +107,15 @@ def import_data(path, check_pupil_files=True):
     # if len(files) == 0:
     #     print(' ==> no new data... exiting!')
     #     return
-    
+
     for idx, file in enumerate(files):
         hdr = fits.getheader(path_raw / '{0}.fits'.format(file))
-        
+
         # skip already imported data
         if file in info_files.index:
             if not info_files.loc[file].isnull()['date']:
                 continue
-            
+
         print(' * importing {0}'.format(file))
 
         # date
@@ -146,7 +146,7 @@ def import_data(path, check_pupil_files=True):
         info_files.loc[file, 'temp_near_ifs']     = hdr.get('HIERARCH ESO INS4 TEMP425 VAL', np.nan)
         info_files.loc[file, 'temp_zimpol_bench'] = hdr.get('HIERARCH ESO INS4 TEMP416 VAL', np.nan)
         info_files.loc[file, 'humidity_hodm']     = hdr.get('HIERARCH ESO INS4 SENS428 VAL', np.nan)
-        
+
     # file types
     info_files.loc[np.logical_not(info_files.source), 'type'] = 'B'
     info_files.loc[info_files.source & (info_files.coro == 'ZELDA'), 'type'] = 'Z'
@@ -157,23 +157,23 @@ def import_data(path, check_pupil_files=True):
 
     # save
     info_files.to_csv(raw_files_db)
-    
+
     #
     # compute OPD maps
     #
     print('Compute new OPD maps')
-    
+
     # pupil
     dim        = 384
     pupil      = aperture.disc(dim, dim, diameter=True, strict=False, cpix=True)
     pupil_full = aperture.sphere_irdis_pupil(spiders=False, dead_actuator_diameter=0.025)
-    
+
     # create sensor
     z = zelda.Sensor('SPHERE-IRDIS')
-    
+
     # dates
     dates = info_files.date.unique()
-    
+
     # OPD files info
     if opd_files_db.exists():
         opd_info = pd.read_csv(path / 'products' / 'opd_info.csv', index_col=[0, 1],
@@ -188,7 +188,7 @@ def import_data(path, check_pupil_files=True):
 
         all_dates = [date for date in dates for i in range(ncpa_n_iter)]
         all_iter  = [i for j in dates for i in range(ncpa_n_iter)]
-        
+
         # create data frame
         opd_info = pd.DataFrame(index=pd.MultiIndex.from_arrays([all_dates, all_iter],
                                                                 names=['date', 'iteration']),
@@ -211,7 +211,7 @@ def import_data(path, check_pupil_files=True):
         if (date, 0) in opd_info.index:
             if not opd_info.loc[(date, 0)].isnull()['zelda_pupil_file']:
                 continue
-        
+
         print('*')
         print('* date:  {0}'.format(date))
         print('* dark:  {0}'.format(dark_file))
@@ -219,7 +219,7 @@ def import_data(path, check_pupil_files=True):
         print('* zelda: {0}, ...'.format(zelda_pupil_files[0]))
         print('*')
         print()
-        
+
         # read files
         clear_pupil, zelda_pupils, c = z.read_files(path_raw, clear_pupil_file,
                                                     list(zelda_pupil_files.values),
@@ -233,11 +233,11 @@ def import_data(path, check_pupil_files=True):
         for opd in opd_maps:
             opd -= opd[pupil_full != 0].mean()
             opd *= pupil
-            
+
         # save
         fname = '{0}_opd.fits'.format(date)
         fits.writeto(path / 'products' / fname, opd_maps, overwrite=True)
-        
+
         # info
         for i in range(ncpa_n_iter):
             opd_info.loc[(date, i), 'dark_file']        = dark_file
@@ -250,7 +250,7 @@ def import_data(path, check_pupil_files=True):
 
     # save opd info
     opd_info.to_csv(opd_files_db)
-    
+
     #
     # analyze OPD maps
     #
@@ -259,7 +259,7 @@ def import_data(path, check_pupil_files=True):
     # pupil
     pupil = aperture.sphere_irdis_pupil(spiders=False, dead_actuator_diameter=0.025)
     pupil = pupil != 0
-    
+
     # Zernike basis
     dim = 384
     rho, theta = aperture.coordinates(dim, dim/2, cpix=True, strict=False, outside=0)
@@ -267,7 +267,7 @@ def import_data(path, check_pupil_files=True):
     basis  = np.nan_to_num(basis)
     nbasis = np.reshape(basis, (nzernike, -1))
     mask   = pupil.flatten()
-    
+
     # generate discs for PSD integration
     psd_2d, psd_1d, freq = ztools.compute_psd(np.zeros((dim, dim)), mask=pupil, freq_cutoff=freq_cutoff)
     dim_psd = psd_2d.shape[0]
@@ -277,39 +277,39 @@ def import_data(path, check_pupil_files=True):
         freq_max = f+1
 
         # IRDIS
-        freq_min_pix = freq_min*dim_psd/(2*freq_cutoff) 
+        freq_min_pix = freq_min*dim_psd/(2*freq_cutoff)
         freq_max_pix = freq_max*dim_psd/(2*freq_cutoff)
         psd_an[f] = aperture.disc(dim_psd, freq_max_pix, diameter=False) \
                                     - aperture.disc(dim_psd, freq_min_pix, diameter=False)
-    
+
     # OPD maps statistics
     for index in opd_info.index:
         # skip already imported data
         if index in opd_info.index:
             if not opd_info.loc[index].isnull()['full_std']:
                 continue
-        
+
         print(' * {0} - iteration {1}'.format(index[0], index[1]))
 
         # append data
         if not (index in opd_info.index):
             opd_info = opd_info.append(opd_info.loc[index])
-        
+
         # read data only for first iteration
         if index[1] == 0:
             opd_maps = fits.getdata(path / 'products' / opd_info.loc[index, 'opd_map_file'])
-        
+
         # OPD map for current iteration
         opd = opd_maps[index[1]]
-                
+
         # projection on Zernike basis
         data = np.reshape(opd*pupil, (1, -1))
         data[:, mask == 0] = 0
-        zcoeff = (nbasis @ data.T).squeeze() / mask.sum()        
+        zcoeff = (nbasis @ data.T).squeeze() / mask.sum()
 
         for z in range(nzernike):
             opd_info.loc[index, 'full_zern.{0}'.format(z)] = zcoeff[z]
-                
+
         # compute PSD
         opd_full = opd.copy()
         opd_info.loc[index, 'full_std'] = opd_full[pupil].std()
@@ -318,12 +318,12 @@ def import_data(path, check_pupil_files=True):
             disc = psd_an[f]
             sigma = np.sqrt(psd_2d[disc].sum())
             opd_info.loc[index, 'full_psd.{0}'.format(f)] = sigma
-        
+
         # remove tip and tilt
         opd -= zcoeff[1] * basis[1]
         opd -= zcoeff[2] * basis[2]
         # opd -= zcoeff[3] * basis[3]
-        
+
         opd_info.loc[index, 'no_tt_std'] = opd[pupil].std()
         psd_2d, psd_1d, freq = ztools.compute_psd(opd, mask=pupil, freq_cutoff=freq_cutoff)
         for f in range(1, freq_cutoff):
@@ -334,12 +334,12 @@ def import_data(path, check_pupil_files=True):
     # save opd info
     opd_info.to_csv(opd_files_db)
 
-    
+
 def _plot_iterations(opd_info, series, color):
     '''
     Utility function for ploting the iterations of the NCPA correction
     '''
-    
+
     all_dates = opd_info.index.get_level_values(0).unique()
     for date in all_dates:
         data = opd_info.loc[(date, slice(None)), series]
@@ -370,19 +370,19 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
         Save the plots
 
     '''
-    
+
     # proper path
     path = Path(path)
 
     # plot setup
     matplotlib.rcParams['font.size'] = fontsize
     color = [color['color'] for color in list(plt.rcParams['axes.prop_cycle'])]
-    
+
     # opd info
     opd_info = pd.read_csv(path / 'products' / 'opd_info.csv',
-                           index_col=[0, 1], parse_dates=True)    
+                           index_col=[0, 1], parse_dates=True)
     all_dates = opd_info.index.get_level_values(0).unique()
-    
+
     if date is None:
         #
         # Temporal monitoring
@@ -411,7 +411,7 @@ def plot(path, ndays=60, date=None, fontsize=17, save=False):
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle=':', marker='o', color=color[0],
                       label='Total')
         _plot_iterations(opd_info, series, color[0])
-        
+
         series = 'no_tt_std'
         data = opd_info.loc[(slice(None), 0), series]
         plt.plot_date(data.index.get_level_values(0), data, xdate=True, linestyle='-', marker='o', color=color[1],
