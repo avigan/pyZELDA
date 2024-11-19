@@ -2,6 +2,8 @@
 .DS_Store
 data/*.fits
 data/*.tar.gz
+*.pdf
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
