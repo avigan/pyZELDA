@@ -30,7 +30,7 @@ setup(
     ],
     include_package_data=True,
     package_data={
-        'pyzelda': ['instruments/*.ini'],
+        'pyzelda': ['instruments/*.ini', 'data/*.fits'],
     },
     zip_safe=False
 )
