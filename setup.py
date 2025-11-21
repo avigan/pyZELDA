@@ -24,7 +24,7 @@ setup(
         'License :: OSI Approved :: MIT License'
     ],
     keywords='zernike wavefront sensor zelda',
-    packages=['pyzelda', 'pyzelda.utils'],
+    packages=['pyzelda', 'pyzelda.utils', 'pyzelda.sphere'],
     install_requires=[
         'numpy', 'scipy', 'astropy', 'matplotlib'
     ],
