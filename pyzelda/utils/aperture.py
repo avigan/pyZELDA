@@ -9,6 +9,11 @@ import collections
 
 import scipy.ndimage as ndimage
 
+from astropy.io import fits
+from pathlib import Path
+
+from . import imutils
+
 
 def coordinates(dim, size, diameter=False, strict=False, center=(), cpix=False, normalized=True, outside=np.nan, polar=True):
     '''
@@ -546,6 +551,45 @@ def sphere_saxo_pupil(dim=240):
     pup = disc_obstructed(diameter, diameter, 0.14, diameter=True, strict=False, cpix=False)
 
     return pup
+
+
+def roman_cgi_pupil(dim=350, orientation=0):
+    '''
+    Parameters
+    ----------
+    dim : int
+        Size of the output array. Default is 384
+
+    orientation : float
+        Orientation of the spiders. The zero-orientation corresponds
+        to the orientation of the spiders when observing in ELEV
+        mode. Default is 0
+
+    Returns
+    -------
+    pup : array
+        An array containing a disc with the specified parameters
+
+    '''
+
+    # fixed diameter
+    diameter = 296
+
+    if dim < diameter:
+        raise ValueError('Image dimensions cannot be smaller than 296 pixels')
+
+    path = Path(__file__).parent.parent / 'data/rst_cgi_pupil.fits'
+    pupil = fits.getdata(path)
+    pupil = pupil[1:-1, 1:-1]
+
+    pupil = imutils.rotate(pupil, -30)
+
+    pupil = imutils.scale(pupil, 0, new_dim=(diameter, diameter))
+    pupil = np.pad(pupil, (dim-diameter)//2, mode='constant', constant_values=0)
+
+    pupil = (pupil > 0.5).astype(float)
+
+    return pupil
 
 
 if __name__ == "__main__":

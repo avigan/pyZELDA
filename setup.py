@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='pyzelda',
-    version='1.3',
+    version='1.4',
     description='Zernike wavefront sensor analysis and simulation tools',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -24,13 +24,13 @@ setup(
         'License :: OSI Approved :: MIT License'
     ],
     keywords='zernike wavefront sensor zelda',
-    packages=['pyzelda', 'pyzelda.utils'],
+    packages=['pyzelda', 'pyzelda.utils', 'pyzelda.sphere'],
     install_requires=[
         'numpy', 'scipy', 'astropy', 'matplotlib'
     ],
     include_package_data=True,
     package_data={
-        'pyzelda': ['instruments/*.ini'],
+        'pyzelda': ['instruments/*.ini', 'data/*.fits'],
     },
     zip_safe=False
 )

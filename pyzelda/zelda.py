@@ -616,7 +616,7 @@ class Sensor():
 
             # too many nagative values
             if (ratio > ratio_limit):
-                raise NameError('Too many negative values in determinant (>1%)')
+                raise NameError(f'Too many negative values in determinant ({ratio:.1f}%). Threshold = {ratio_limit:.1f}%')
 
             # replace negative values by 0
             delta[neg_values] = 0
@@ -634,9 +634,9 @@ class Sensor():
 
             # remove piston
             if pupil_roi.any():
-                opd_nm[pupil_roi == True] -= opd_nm[pupil_roi == True].mean()
+                opd_nm[pupil_roi == True] -= np.nanmean(opd_nm[pupil_roi == True])
             else:
-                opd_nm[pup] -= opd_nm[pup].mean()
+                opd_nm[pup] -= np.nanmean(opd_nm[pup])
 
             # statistics
             if not self.silent:
